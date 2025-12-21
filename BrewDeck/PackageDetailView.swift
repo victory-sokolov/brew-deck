@@ -4,8 +4,18 @@ struct PackageDetailView: View {
     let package: Package?
     @ObservedObject var viewModel: BrewViewModel
     
+    var currentPackage: Package? {
+        guard let package = package else { return nil }
+        // Try to find a matching package by name or ID
+        return viewModel.installedPackages.first(where: { 
+            $0.name == package.name || 
+            $0.name.lowercased() == package.name.lowercased() ||
+            ($0.name.components(separatedBy: "/").last == package.name.components(separatedBy: "/").last)
+        }) ?? package
+    }
+    
     var body: some View {
-        if let package = package {
+        if let package = currentPackage {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     header(package)
@@ -57,6 +67,15 @@ struct PackageDetailView: View {
                         Text(fullName)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+                    
+                    if let size = package.formattedSize {
+                        Text("•")
+                            .foregroundStyle(.secondary)
+                        Text(size)
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                            .bold()
                     }
                 }
                 .padding(.top, 4)
@@ -149,6 +168,14 @@ struct PackageDetailView: View {
             
             Divider()
             
+            if let size = package.formattedSize {
+                DetailRow(label: "Size on Disk", value: size)
+            } else if package.isInstalled {
+                // If it's installed but size is 0 or nil, it might still be calculating
+                DetailRow(label: "Size on Disk", value: "Calculating...")
+                    .foregroundStyle(.secondary)
+            }
+            
             DetailRow(label: "Installed", value: package.installedVersion ?? "Not installed")
             DetailRow(label: "Latest", value: package.latestVersion)
             
@@ -158,10 +185,6 @@ struct PackageDetailView: View {
             
             if let homepage = package.homepage {
                 DetailRow(label: "Homepage", value: homepage)
-            }
-            
-            if let size = package.formattedSize {
-                DetailRow(label: "Size on Disk", value: size)
             }
         }
     }

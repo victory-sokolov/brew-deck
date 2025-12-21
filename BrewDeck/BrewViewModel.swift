@@ -42,6 +42,7 @@ class BrewViewModel: ObservableObject {
         if let data = try? Data(contentsOf: cacheURL),
            let cached = try? JSONDecoder().decode([Package].self, from: data) {
             self.installedPackages = cached
+            self.totalDiskUsage = cached.compactMap { $0.sizeOnDisk }.reduce(0, +)
         }
     }
     

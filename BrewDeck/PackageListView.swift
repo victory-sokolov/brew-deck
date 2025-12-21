@@ -217,6 +217,12 @@ struct PackageRow: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 4) {
+                if let size = package.formattedSize {
+                    Text(size)
+                        .font(.caption2)
+                        .foregroundStyle(.blue.opacity(0.8))
+                }
+                
                 if let version = package.installedVersion {
                     Text(version)
                         .font(.system(.caption, design: .monospaced))
