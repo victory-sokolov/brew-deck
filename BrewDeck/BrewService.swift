@@ -47,7 +47,7 @@ class BrewService {
         }
     }
     
-    func run(arguments: [String], timeoutSeconds: Double = 30.0) async throws -> String {
+    func run(arguments: [String], timeoutSeconds: Double = 60.0) async throws -> String {
         guard !arguments.isEmpty else { return "" }
         
         return try await withCheckedThrowingContinuation { continuation in
@@ -137,7 +137,7 @@ class BrewService {
     
     func fetchInstalledPackages() async throws -> [Package] {
         let sizes = await fetchPackageSizes()
-        let output = try await run(arguments: ["info", "--json=v2", "--installed"], timeoutSeconds: 20)
+        let output = try await run(arguments: ["info", "--json=v2", "--installed"], timeoutSeconds: 60)
         let data = Data(output.utf8)
         let response = try JSONDecoder().decode(BrewInfoResponse.self, from: data)
         
@@ -193,7 +193,7 @@ class BrewService {
     }
     
     func fetchOutdatedPackages() async throws -> [OutdatedPackageInfo] {
-        let output = try await run(arguments: ["outdated", "--json=v2"], timeoutSeconds: 20)
+        let output = try await run(arguments: ["outdated", "--json=v2"], timeoutSeconds: 60)
         let response = try JSONDecoder().decode(OutdatedResponse.self, from: Data(output.utf8))
         var outdated: [OutdatedPackageInfo] = []
         outdated += response.formulae.map { OutdatedPackageInfo(name: $0.name, type: .formula, installedVersion: $0.installedVersions.first ?? "", latestVersion: $0.currentVersion) }
@@ -203,14 +203,14 @@ class BrewService {
     
     func searchPackages(query: String) async throws -> [Package] {
         if query.count < 2 { return [] }
-        let output = try await run(arguments: ["search", "--", query], timeoutSeconds: 15)
+        let output = try await run(arguments: ["search", "--", query], timeoutSeconds: 30)
         let names = output.components(separatedBy: .whitespacesAndNewlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty && !$0.contains("==>") && !$0.localizedCaseInsensitiveContains("Formulae") && !$0.localizedCaseInsensitiveContains("Casks") }
         
         if names.isEmpty { return [] }
         let limitedNames = Array(names.prefix(15))
-        let infoOutput = try await run(arguments: ["info", "--json=v2", "--"] + limitedNames, timeoutSeconds: 15)
+        let infoOutput = try await run(arguments: ["info", "--json=v2", "--"] + limitedNames, timeoutSeconds: 30)
         let response = try JSONDecoder().decode(BrewInfoResponse.self, from: Data(infoOutput.utf8))
         return response.formulae.map { Package(from: $0) } + response.casks.map { Package(from: $0) }
     }

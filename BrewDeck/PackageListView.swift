@@ -20,9 +20,6 @@ struct PackageListView: View {
             source = viewModel.installedPackages.filter { pkg in
                 viewModel.outdatedPackages.contains { $0.name == pkg.name }
             }
-        case .allPackages:
-            // This would ideally be a huge list, but for now let's just show everything we know
-            source = viewModel.installedPackages // Placeholder
         case .settings:
             source = []
         }

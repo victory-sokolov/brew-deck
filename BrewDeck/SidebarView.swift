@@ -4,7 +4,6 @@ enum NavigationItem: String, Hashable, CaseIterable {
     case search = "Search"
     case installed = "Installed"
     case updates = "Updates"
-    case allPackages = "All Packages"
     case settings = "Settings"
     
     var icon: String {
@@ -12,7 +11,6 @@ enum NavigationItem: String, Hashable, CaseIterable {
         case .search: return "magnifyingglass"
         case .installed: return "shippingbox"
         case .updates: return "arrow.clockwise"
-        case .allPackages: return "square.grid.2x2"
         case .settings: return "gearshape"
         }
     }
@@ -25,7 +23,7 @@ struct SidebarView: View {
     var body: some View {
         List(selection: $selection) {
             Section("Main") {
-                ForEach([NavigationItem.search, .installed, .updates, .allPackages], id: \.self) { item in
+                ForEach([NavigationItem.search, .installed, .updates], id: \.self) { item in
                     NavigationLink(value: item) {
                         Label(item.rawValue, systemImage: item.icon)
                             .badge(badgeFor(item))
