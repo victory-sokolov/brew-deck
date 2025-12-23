@@ -3,35 +3,35 @@ import SwiftUI
 struct PackageDetailView: View {
     let package: Package?
     @ObservedObject var viewModel: BrewViewModel
-    
+
     var currentPackage: Package? {
         guard let package = package else { return nil }
         // Try to find a matching package by name or ID
-        return viewModel.installedPackages.first(where: { 
-            $0.name == package.name || 
-            $0.name.lowercased() == package.name.lowercased() ||
-            ($0.name.components(separatedBy: "/").last == package.name.components(separatedBy: "/").last)
+        return viewModel.installedPackages.first(where: {
+            $0.name == package.name ||
+                $0.name.lowercased() == package.name.lowercased() ||
+                ($0.name.components(separatedBy: "/").last == package.name.components(separatedBy: "/").last)
         }) ?? package
     }
-    
+
     var body: some View {
         if let package = currentPackage {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     header(package)
-                    
+
                     if let versionInfo = viewModel.outdatedPackages.first(where: { $0.name == package.name }) {
                         updateCard(package, versionInfo)
                     }
-                    
+
                     actions(package)
-                    
+
                     details(package)
-                    
+
                     if viewModel.showLogs {
                         operationLog
                     }
-                    
+
                     Spacer()
                 }
                 .padding(32)
@@ -47,20 +47,20 @@ struct PackageDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
-    
+
     private func header(_ package: Package) -> some View {
         HStack(alignment: .top, spacing: 20) {
             PackageIcon(type: package.type)
                 .frame(width: 80, height: 80)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(package.name)
                     .font(.system(size: 32, weight: .bold))
-                
+
                 Text(package.description ?? "No description available")
                     .font(.title3)
                     .foregroundStyle(.secondary)
-                
+
                 HStack {
                     CapsuleText(text: package.type.rawValue.capitalized, color: package.type == .formula ? .purple : .blue)
                     if let fullName = package.fullName {
@@ -68,7 +68,7 @@ struct PackageDetailView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    
+
                     if let size = package.formattedSize {
                         Text("•")
                             .foregroundStyle(.secondary)
@@ -80,7 +80,7 @@ struct PackageDetailView: View {
                 }
                 .padding(.top, 4)
             }
-            
+
             Spacer()
         }
         .padding(24)
@@ -93,7 +93,7 @@ struct PackageDetailView: View {
                 )
         )
     }
-    
+
     private func updateCard(_ package: Package, _ info: OutdatedPackageInfo) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -102,10 +102,10 @@ struct PackageDetailView: View {
                 Text("Update Available")
                     .font(.headline)
             }
-            
+
             Text("Version \(info.latestVersion) is available. You are currently on \(info.installedVersion).")
                 .font(.subheadline)
-            
+
             Button {
                 Task { await viewModel.upgrade(package: package.name) }
             } label: {
@@ -123,7 +123,7 @@ struct PackageDetailView: View {
                 .stroke(Color.blue.opacity(0.2), lineWidth: 1)
         )
     }
-    
+
     private func actions(_ package: Package) -> some View {
         HStack(spacing: 16) {
             if !package.isInstalled {
@@ -146,7 +146,7 @@ struct PackageDetailView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
-                
+
                 Button(role: .destructive) {
                     Task { await viewModel.uninstall(package: package) }
                 } label: {
@@ -158,16 +158,16 @@ struct PackageDetailView: View {
             }
         }
     }
-    
+
     private func details(_ package: Package) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("DETAILS")
                 .font(.caption)
                 .bold()
                 .foregroundStyle(.secondary)
-            
+
             Divider()
-            
+
             if let size = package.formattedSize {
                 DetailRow(label: "Size on Disk", value: size)
             } else if package.isInstalled {
@@ -175,20 +175,20 @@ struct PackageDetailView: View {
                 DetailRow(label: "Size on Disk", value: "Calculating...")
                     .foregroundStyle(.secondary)
             }
-            
+
             DetailRow(label: "Installed", value: package.installedVersion ?? "Not installed")
             DetailRow(label: "Latest", value: package.latestVersion)
-            
+
             if let deps = package.dependencies, !deps.isEmpty {
                 DetailRow(label: "Dependencies", value: deps.joined(separator: ", "))
             }
-            
+
             if let homepage = package.homepage {
                 DetailRow(label: "Homepage", value: homepage)
             }
         }
     }
-    
+
     private var operationLog: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -197,7 +197,7 @@ struct PackageDetailView: View {
                     .bold()
                     .foregroundStyle(.secondary)
                 Spacer()
-                
+
                 if viewModel.isRunningOperation {
                     ProgressView()
                         .scaleEffect(0.5)
@@ -212,7 +212,7 @@ struct PackageDetailView: View {
                         }
                         .buttonStyle(.plain)
                         .help("Copy Logs")
-                        
+
                         Button {
                             viewModel.showLogs = false
                             viewModel.operationOutput = ""
@@ -224,7 +224,7 @@ struct PackageDetailView: View {
                     }
                 }
             }
-            
+
             ScrollView {
                 Text(viewModel.operationOutput)
                     .font(.system(.caption, design: .monospaced))
@@ -243,7 +243,7 @@ struct PackageDetailView: View {
 struct DetailRow: View {
     let label: String
     let value: String
-    
+
     var body: some View {
         HStack {
             Text(label)
@@ -259,7 +259,7 @@ struct DetailRow: View {
 struct CapsuleText: View {
     let text: String
     let color: Color
-    
+
     var body: some View {
         Text(text)
             .font(.system(size: 10, weight: .bold))

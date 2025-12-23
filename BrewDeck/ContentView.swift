@@ -4,7 +4,7 @@ struct ContentView: View {
     @StateObject private var viewModel = BrewViewModel()
     @State private var selection: NavigationItem? = .installed
     @State private var selectedPackage: Package?
-    
+
     var body: some View {
         NavigationSplitView {
             SidebarView(selection: $selection, viewModel: viewModel)

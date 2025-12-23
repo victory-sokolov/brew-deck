@@ -5,7 +5,7 @@ enum NavigationItem: String, Hashable, CaseIterable {
     case installed = "Installed"
     case updates = "Updates"
     case settings = "Settings"
-    
+
     var icon: String {
         switch self {
         case .search: return "magnifyingglass"
@@ -19,7 +19,7 @@ enum NavigationItem: String, Hashable, CaseIterable {
 struct SidebarView: View {
     @Binding var selection: NavigationItem?
     @ObservedObject var viewModel: BrewViewModel
-    
+
     var body: some View {
         List(selection: $selection) {
             Section("Main") {
@@ -30,9 +30,9 @@ struct SidebarView: View {
                     }
                 }
             }
-            
+
             Spacer()
-            
+
             Section("System") {
                 NavigationLink(value: NavigationItem.settings) {
                     Label(NavigationItem.settings.rawValue, systemImage: NavigationItem.settings.icon)
@@ -57,9 +57,9 @@ struct SidebarView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
                 .padding(.horizontal)
-                
+
                 Divider()
-                
+
                 HStack {
                     Image(systemName: "person.circle.fill")
                         .font(.title2)
@@ -78,7 +78,7 @@ struct SidebarView: View {
             }
         }
     }
-    
+
     private func badgeFor(_ item: NavigationItem) -> Int {
         switch item {
         case .installed:

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var viewModel: BrewViewModel
-    
+
     var body: some View {
         Form {
             Section("Brew Settings") {
@@ -10,7 +10,7 @@ struct SettingsView: View {
                     Task { await viewModel.refresh() }
                 }
                 .disabled(viewModel.isLoading)
-                
+
                 if viewModel.isLoading {
                     HStack {
                         ProgressView()
@@ -20,7 +20,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            
+
             Section("About") {
                 LabeledContent("Version", value: "1.0.0")
                 LabeledContent("App Name", value: "BrewDeck")

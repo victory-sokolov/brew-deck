@@ -18,15 +18,15 @@ struct Package: Identifiable, Codable, Hashable {
     var sizeOnDisk: Int64? // Only for formulae usually
     let lastUsedTime: Date?
     let installDate: Date?
-    
+
     // Additional metadata
     let dependencies: [String]?
     let installationPath: String?
-    
+
     var isInstalled: Bool {
         installedVersion != nil
     }
-    
+
     var formattedSize: String? {
         guard let size = sizeOnDisk, size > 0 else { return nil }
         let formatter = ByteCountFormatter()
@@ -51,7 +51,7 @@ struct Formula: Decodable {
     let versions: FormulaVersions?
     let outdated: Bool?
     let installed: [FormulaInstalled]?
-    
+
     enum CodingKeys: String, CodingKey {
         case name, homepage, desc, versions, outdated, installed
         case fullName = "full_name"
@@ -68,7 +68,7 @@ struct FormulaInstalled: Decodable {
     let installedOnRequest: Bool?
     let installedAsDependency: Bool?
     let installedSize: Int64?
-    
+
     enum CodingKeys: String, CodingKey {
         case version, installedOnRequest, installedAsDependency
         case runtimeDependencies = "runtime_dependencies"
@@ -78,7 +78,7 @@ struct FormulaInstalled: Decodable {
 
 struct FormulaDependency: Decodable {
     let fullName: String
-    
+
     enum CodingKeys: String, CodingKey {
         case fullName = "full_name"
     }
@@ -92,7 +92,7 @@ struct Cask: Decodable {
     let version: String
     let installed: String?
     let outdated: Bool?
-    
+
     enum CodingKeys: String, CodingKey {
         case token, name, desc, homepage, version, installed, outdated
     }
@@ -107,7 +107,7 @@ struct OutdatedFormula: Decodable {
     let name: String
     let installedVersions: [String]
     let currentVersion: String
-    
+
     enum CodingKeys: String, CodingKey {
         case name
         case installedVersions = "installed_versions"
@@ -119,7 +119,7 @@ struct OutdatedCask: Decodable {
     let name: String
     let installedVersions: [String]
     let currentVersion: String
-    
+
     enum CodingKeys: String, CodingKey {
         case name
         case installedVersions = "installed_versions"
@@ -136,34 +136,34 @@ struct OutdatedPackageInfo: Codable {
 
 extension Package {
     init(from formula: Formula) {
-        self.name = formula.name
-        self.fullName = formula.fullName
-        self.description = formula.desc
-        self.homepage = formula.homepage
-        self.type = .formula
-        self.installedVersion = formula.installed?.first?.version
-        self.latestVersion = formula.versions?.stable ?? ""
-        self.isOutdated = formula.outdated ?? false
-        self.sizeOnDisk = formula.installed?.first?.installedSize
-        self.lastUsedTime = nil
-        self.installDate = nil
-        self.dependencies = formula.installed?.first?.runtimeDependencies?.map { $0.fullName }
-        self.installationPath = nil
+        name = formula.name
+        fullName = formula.fullName
+        description = formula.desc
+        homepage = formula.homepage
+        type = .formula
+        installedVersion = formula.installed?.first?.version
+        latestVersion = formula.versions?.stable ?? ""
+        isOutdated = formula.outdated ?? false
+        sizeOnDisk = formula.installed?.first?.installedSize
+        lastUsedTime = nil
+        installDate = nil
+        dependencies = formula.installed?.first?.runtimeDependencies?.map { $0.fullName }
+        installationPath = nil
     }
-    
+
     init(from cask: Cask) {
-        self.name = cask.token
-        self.fullName = cask.name?.first
-        self.description = cask.desc
-        self.homepage = cask.homepage
-        self.type = .cask
-        self.installedVersion = cask.installed
-        self.latestVersion = cask.version
-        self.isOutdated = cask.outdated ?? false
-        self.sizeOnDisk = nil
-        self.lastUsedTime = nil
-        self.installDate = nil
-        self.dependencies = nil
-        self.installationPath = nil
+        name = cask.token
+        fullName = cask.name?.first
+        description = cask.desc
+        homepage = cask.homepage
+        type = .cask
+        installedVersion = cask.installed
+        latestVersion = cask.version
+        isOutdated = cask.outdated ?? false
+        sizeOnDisk = nil
+        lastUsedTime = nil
+        installDate = nil
+        dependencies = nil
+        installationPath = nil
     }
 }
