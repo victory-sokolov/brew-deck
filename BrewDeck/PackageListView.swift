@@ -25,7 +25,9 @@ struct PackageListView: View {
         }
 
         return source.filter { pkg in
-            let matchesSearch = searchText.isEmpty || pkg.name.localizedCaseInsensitiveContains(searchText) || (pkg.description?.localizedCaseInsensitiveContains(searchText) ?? false)
+            let matchesSearch = searchText.isEmpty ||
+                pkg.name.localizedCaseInsensitiveContains(searchText) ||
+                (pkg.description?.localizedCaseInsensitiveContains(searchText) ?? false)
             let matchesFilter = filter == nil || pkg.type == filter
             let matchesOutdated = !showOnlyOutdated || viewModel.outdatedPackages.contains { $0.name == pkg.name }
             return matchesSearch && matchesFilter && matchesOutdated
@@ -66,7 +68,10 @@ struct PackageListView: View {
                 Spacer()
             } else {
                 List(filteredPackages, selection: $selectedPackage) { package in
-                    PackageRow(package: package, isOutdated: viewModel.outdatedPackages.contains { $0.name == package.name })
+                    PackageRow(
+                        package: package,
+                        isOutdated: viewModel.outdatedPackages.contains { $0.name == package.name }
+                    )
                         .tag(package)
                 }
             }

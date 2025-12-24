@@ -13,7 +13,9 @@ enum BrewError: LocalizedError {
         case let .commandFailed(detail): return detail
         case .parsingError: return "Failed to parse Homebrew output."
         case .timeout: return "The Homebrew command timed out."
-        case .permissionDenied: return "Permission Denied (OS 0x5). Please disable App Sandbox in Xcode and Clean the project (Cmd+Option+Shift+K)."
+        case .permissionDenied:
+            return "Permission Denied (OS 0x5). " +
+                "Please disable App Sandbox in Xcode and Clean the project (Cmd+Option+Shift+K)."
         }
     }
 }
@@ -35,7 +37,10 @@ class BrewService {
     private func setupAskPass() {
         let script = """
         #!/bin/bash
-        osascript -e 'display dialog "BrewDeck needs administrator privileges to complete this action. Please enter your password:" default answer "" with title "Privileged Action" with hidden answer' -e 'text returned of result'
+        osascript \\
+        -e 'display dialog "BrewDeck needs administrator privileges to complete this action. \\
+        Please enter your password:" default answer "" with title "Privileged Action" with hidden answer' \\
+        -e 'text returned of result'
         """
 
         do {
@@ -47,6 +52,45 @@ class BrewService {
         }
     }
 
+    private func setupProcess(_ process: Process, arguments: [String], outputPipe: Pipe, errorPipe: Pipe) {
+        process.executableURL = URL(fileURLWithPath: self.brewPath)
+        process.arguments = arguments
+        process.standardOutput = outputPipe
+        process.standardError = errorPipe
+
+        var env = ProcessInfo.processInfo.environment
+        env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
+        env["HOMEBREW_NO_ANALYTICS"] = "1"
+        env["HOMEBREW_COLOR"] = "0"
+        env["SUDO_ASKPASS"] = self.askPassPath
+        env["DISPLAY"] = ":0"
+        process.environment = env
+    }
+
+    private func setupReadabilityHandlers(
+        pipe: Pipe,
+        errorPipe: Pipe,
+        outputData: NSMutableData,
+        errorData: NSMutableData
+    ) {
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if !data.isEmpty { outputData.append(data) }
+        }
+
+        errorPipe.fileHandleForReading.readabilityHandler = { handle in
+            let data = handle.availableData
+            if !data.isEmpty { errorData.append(data) }
+        }
+    private func setupTimeout(for process: Process, timeoutSeconds: Double, continuation: CheckedContinuation<String, Error>) {
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds) {
+            if process.isRunning {
+                process.terminate()
+                continuation.resume(throwing: BrewError.timeout)
+            }
+        }
+    }
+
     func run(arguments: [String], timeoutSeconds: Double = 60.0) async throws -> String {
         guard !arguments.isEmpty else { return "" }
 
@@ -55,31 +99,17 @@ class BrewService {
             let pipe = Pipe()
             let errorPipe = Pipe()
 
-            process.executableURL = URL(fileURLWithPath: self.brewPath)
-            process.arguments = arguments
-            process.standardOutput = pipe
-            process.standardError = errorPipe
-
-            var env = ProcessInfo.processInfo.environment
-            env["HOMEBREW_NO_AUTO_UPDATE"] = "1"
-            env["HOMEBREW_NO_ANALYTICS"] = "1"
-            env["HOMEBREW_COLOR"] = "0"
-            env["SUDO_ASKPASS"] = self.askPassPath
-            env["DISPLAY"] = ":0"
-            process.environment = env
+            self.setupProcess(process, arguments: arguments, outputPipe: pipe, errorPipe: errorPipe)
 
             let outputData = NSMutableData()
             let errorData = NSMutableData()
 
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if !data.isEmpty { outputData.append(data) }
-            }
-
-            errorPipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if !data.isEmpty { errorData.append(data) }
-            }
+            self.setupReadabilityHandlers(
+                pipe: pipe,
+                errorPipe: errorPipe,
+                outputData: outputData,
+                errorData: errorData
+            )
 
             var isFinished = false
             let lock = NSLock()
@@ -103,8 +133,11 @@ class BrewService {
 
             process.terminationHandler = { process in
                 if process.terminationStatus != 0 {
-                    let errorMessage = String(data: errorData as Data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-                    finish(throwing: BrewError.commandFailed(errorMessage.isEmpty ? "Exit code \(process.terminationStatus)" : errorMessage))
+                    let errorMessage = String(data: errorData as Data, encoding: .utf8)?
+                        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    finish(throwing: BrewError.commandFailed(
+                        errorMessage.isEmpty ? "Exit code \(process.terminationStatus)" : errorMessage
+                    ))
                 } else {
                     if let output = String(data: outputData as Data, encoding: .utf8) {
                         finish(result: output)
@@ -114,13 +147,7 @@ class BrewService {
                 }
             }
 
-            // Timeout handling
-            DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds) {
-                if process.isRunning {
-                    process.terminate()
-                    finish(throwing: BrewError.timeout)
-                }
-            }
+            self.setupTimeout(for: process, timeoutSeconds: timeoutSeconds, continuation: continuation)
 
             do {
                 print("🛠 BrewDeck: Executing \(arguments.joined(separator: " "))")
@@ -196,8 +223,22 @@ class BrewService {
         let output = try await run(arguments: ["outdated", "--json=v2"], timeoutSeconds: 60)
         let response = try JSONDecoder().decode(OutdatedResponse.self, from: Data(output.utf8))
         var outdated: [OutdatedPackageInfo] = []
-        outdated += response.formulae.map { OutdatedPackageInfo(name: $0.name, type: .formula, installedVersion: $0.installedVersions.first ?? "", latestVersion: $0.currentVersion) }
-        outdated += response.casks.map { OutdatedPackageInfo(name: $0.name, type: .cask, installedVersion: $0.installedVersions.first ?? "", latestVersion: $0.currentVersion) }
+        outdated += response.formulae.map {
+            OutdatedPackageInfo(
+                name: $0.name,
+                type: .formula,
+                installedVersion: $0.installedVersions.first ?? "",
+                latestVersion: $0.currentVersion
+            )
+        }
+        outdated += response.casks.map {
+            OutdatedPackageInfo(
+                name: $0.name,
+                type: .cask,
+                installedVersion: $0.installedVersions.first ?? "",
+                latestVersion: $0.currentVersion
+            )
+        }
         return outdated
     }
 
@@ -206,7 +247,11 @@ class BrewService {
         let output = try await run(arguments: ["search", "--", query], timeoutSeconds: 30)
         let names = output.components(separatedBy: .whitespacesAndNewlines)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty && !$0.contains("==>") && !$0.localizedCaseInsensitiveContains("Formulae") && !$0.localizedCaseInsensitiveContains("Casks") }
+            .filter {
+                !$0.isEmpty && !$0.contains("==>") &&
+                !$0.localizedCaseInsensitiveContains("Formulae") &&
+                !$0.localizedCaseInsensitiveContains("Casks")
+            }
 
         if names.isEmpty { return [] }
         let limitedNames = Array(names.prefix(15))
@@ -274,12 +319,16 @@ class BrewService {
             }
         }
     }
+}
 
+extension BrewService {
     func fetchPackageSizes() async -> [String: Int64] {
         do {
             // Get correct paths from brew
-            let cellarPath = (try? await run(arguments: ["--cellar"]))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let caskroomPath = (try? await run(arguments: ["--caskroom"]))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let cellarPath = (try? await run(arguments: ["--cellar"]))?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let caskroomPath = (try? await run(arguments: ["--caskroom"]))?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
             var pathsToScan: [String] = []
             if !cellarPath.isEmpty, FileManager.default.fileExists(atPath: cellarPath) {
@@ -335,25 +384,29 @@ class BrewService {
 
             if parts.count == 2 {
                 let sizeStr = parts[0].trimmingCharacters(in: .whitespaces)
-                let path = parts[1].trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-                if let kb = Int64(sizeStr) {
+                let path = parts[1]
+                    .trimmingCharacters(in: .whitespaces)
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+                if let sizeInKb = Int64(sizeStr) {
                     let name = (path as NSString).lastPathComponent
                     // Ignore the base directories themselves (Cellar/Caskroom) which represent totals
                     if !name.isEmpty && name.lowercased() != "cellar" && name.lowercased() != "caskroom" {
-                        sizes[name] = kb * 1024
+                        sizes[name] = sizeInKb * 1024
                     }
                 }
             } else {
                 // Fallback for space-separated output or other formats
                 let scanner = Scanner(string: line)
-                var kb: Int64 = 0
-                if scanner.scanInt64(&kb) {
-                    let remaining = line.dropFirst(scanner.currentIndex.utf16Offset(in: line)).trimmingCharacters(in: .whitespaces)
+                var sizeInKb: Int64 = 0
+                if scanner.scanInt64(&sizeInKb) {
+                    let remaining = line
+                        .dropFirst(scanner.currentIndex.utf16Offset(in: line))
+                        .trimmingCharacters(in: .whitespaces)
                     if !remaining.isEmpty {
                         let path = remaining.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
                         let name = (path as NSString).lastPathComponent
                         if !name.isEmpty, name.lowercased() != "cellar", name.lowercased() != "caskroom" {
-                            sizes[name] = kb * 1024
+                            sizes[name] = sizeInKb * 1024
                         }
                     }
                 }

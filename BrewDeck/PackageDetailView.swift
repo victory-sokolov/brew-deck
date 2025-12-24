@@ -62,7 +62,10 @@ struct PackageDetailView: View {
                     .foregroundStyle(.secondary)
 
                 HStack {
-                    CapsuleText(text: package.type.rawValue.capitalized, color: package.type == .formula ? .purple : .blue)
+                    CapsuleText(
+                        text: package.type.rawValue.capitalized,
+                        color: package.type == .formula ? .purple : .blue
+                    )
                     if let fullName = package.fullName {
                         Text(fullName)
                             .font(.caption)
