@@ -20,8 +20,7 @@ struct PackageDetailView: View {
         VStack(alignment: .leading, spacing: 24) {
           header(package)
 
-          if let versionInfo = viewModel.outdatedPackages.first(where: { $0.name == package.name })
-          {
+          if let versionInfo = viewModel.outdatedPackages.first(where: { $0.name == package.name }) {
             updateCard(package, versionInfo)
           }
 
