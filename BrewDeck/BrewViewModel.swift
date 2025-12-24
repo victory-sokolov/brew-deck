@@ -1,147 +1,149 @@
-import Foundation
 import Combine
+import Foundation
 
 @MainActor
 class BrewViewModel: ObservableObject {
-    @Published var installedPackages: [Package] = [] {
-        didSet { saveCache() }
+  @Published var installedPackages: [Package] = [] {
+    didSet { saveCache() }
+  }
+
+  @Published var outdatedPackages: [OutdatedPackageInfo] = []
+  @Published var searchResults: [Package] = []
+  @Published var isLoading = false
+  @Published var error: String?
+  @Published var operationOutput: String = ""
+  @Published var isRunningOperation = false
+  @Published var showLogs = false
+  @Published var totalDiskUsage: Int64 = 0
+
+  private let service = BrewService.shared
+  private var searchTask: Task<Void, Never>?
+  private let cacheURL = FileManager.default.temporaryDirectory.appendingPathComponent(
+    "brew_cache.json")
+
+  var formattedTotalSize: String {
+    let formatter = ByteCountFormatter()
+    formatter.allowedUnits = [.useAll]
+    formatter.countStyle = .file
+    return formatter.string(fromByteCount: totalDiskUsage)
+  }
+
+  init() {
+    print("📱 BrewViewModel Initialized. Service Version: \(BrewService.version)")
+    loadCache()
+    Task {
+      await refresh()
     }
-    @Published var outdatedPackages: [OutdatedPackageInfo] = []
-    @Published var searchResults: [Package] = []
-    @Published var isLoading = false
-    @Published var error: String?
-    @Published var operationOutput: String = ""
-    @Published var isRunningOperation = false
-    @Published var showLogs = false
-    @Published var totalDiskUsage: Int64 = 0
-    
-    private let service = BrewService.shared
-    private var searchTask: Task<Void, Never>?
-    private let cacheURL = FileManager.default.temporaryDirectory.appendingPathComponent("brew_cache.json")
-    
-    var formattedTotalSize: String {
-        let formatter = ByteCountFormatter()
-        formatter.allowedUnits = [.useAll]
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: totalDiskUsage)
+  }
+
+  private func saveCache() {
+    try? JSONEncoder().encode(installedPackages).write(to: cacheURL)
+  }
+
+  private func loadCache() {
+    if let data = try? Data(contentsOf: cacheURL),
+      let cached = try? JSONDecoder().decode([Package].self, from: data) {
+      installedPackages = cached
+      totalDiskUsage = cached.compactMap { $0.sizeOnDisk }.reduce(0, +)
     }
-    
-    init() {
-        print("📱 BrewViewModel Initialized. Service Version: \(BrewService.version)")
-        loadCache()
-        Task {
-            await refresh()
-        }
+  }
+
+  func refresh() async {
+    isLoading = true
+    error = nil
+
+    do {
+      let installed = try await service.fetchInstalledPackages()
+
+      // Fetch outdated in parallel
+      async let outdated = service.fetchOutdatedPackages()
+      let fetchedOutdated = (try? await outdated) ?? []
+
+      await MainActor.run {
+        self.installedPackages = installed
+        self.outdatedPackages = fetchedOutdated
+        self.totalDiskUsage = installed.compactMap { $0.sizeOnDisk }.reduce(0, +)
+        self.isLoading = false
+      }
+    } catch {
+      self.error = error.localizedDescription
+      isLoading = false
     }
-    
-    private func saveCache() {
-        try? JSONEncoder().encode(installedPackages).write(to: cacheURL)
+  }
+
+  func search(query: String) async {
+    if query.count < 2 {
+      searchResults = []
+      return
     }
-    
-    private func loadCache() {
-        if let data = try? Data(contentsOf: cacheURL),
-           let cached = try? JSONDecoder().decode([Package].self, from: data) {
-            self.installedPackages = cached
-            self.totalDiskUsage = cached.compactMap { $0.sizeOnDisk }.reduce(0, +)
-        }
+
+    isLoading = true
+    do {
+      let results = try await service.searchPackages(query: query)
+      searchResults = results
+      isLoading = false
+    } catch {
+      self.error = error.localizedDescription
+      isLoading = false
     }
-    
-    func refresh() async {
-        isLoading = true
-        error = nil
-        
-        do {
-            let installed = try await service.fetchInstalledPackages()
-            
-            // Fetch outdated in parallel
-            async let outdated = service.fetchOutdatedPackages()
-            let fetchedOutdated = (try? await outdated) ?? []
-            
-            await MainActor.run {
-                self.installedPackages = installed
-                self.outdatedPackages = fetchedOutdated
-                self.totalDiskUsage = installed.compactMap { $0.sizeOnDisk }.reduce(0, +)
-                self.isLoading = false
-            }
-        } catch {
-            self.error = error.localizedDescription
-            self.isLoading = false
-        }
+  }
+
+  func install(package: String) async {
+    isRunningOperation = true
+    showLogs = true
+    operationOutput = "Starting installation of \(package)...\n"
+
+    for await output in service.performAction(arguments: ["install", "--", package]) {
+      operationOutput += output
     }
-    
-    func search(query: String) async {
-        if query.count < 2 {
-            searchResults = []
-            return
-        }
-        
-        isLoading = true
-        do {
-            let results = try await service.searchPackages(query: query)
-            self.searchResults = results
-            self.isLoading = false
-        } catch {
-            self.error = error.localizedDescription
-            self.isLoading = false
-        }
+
+    isRunningOperation = false
+    await refresh()
+  }
+
+  func uninstall(package: Package) async {
+    isRunningOperation = true
+    showLogs = true
+    operationOutput = "Starting uninstallation of \(package.name)...\n"
+
+    let args: [String]
+    if package.type == .cask {
+      args = ["uninstall", "--cask", "--zap", "--", package.name]
+    } else {
+      args = ["uninstall", "--", package.name]
     }
-    
-    func install(package: String) async {
-        isRunningOperation = true
-        showLogs = true
-        operationOutput = "Starting installation of \(package)...\n"
-        
-        for await output in service.performAction(arguments: ["install", "--", package]) {
-            operationOutput += output
-        }
-        
-        isRunningOperation = false
-        await refresh()
+
+    for await output in service.performAction(arguments: args) {
+      operationOutput += output
     }
-    
-    func uninstall(package: Package) async {
-        isRunningOperation = true
-        showLogs = true
-        operationOutput = "Starting uninstallation of \(package.name)...\n"
-        
-        let args: [String]
-        if package.type == .cask {
-            args = ["uninstall", "--cask", "--zap", "--", package.name]
-        } else {
-            args = ["uninstall", "--", package.name]
-        }
-        
-        for await output in service.performAction(arguments: args) {
-            operationOutput += output
-        }
-        
-        isRunningOperation = false
-        await refresh()
+
+    isRunningOperation = false
+    await refresh()
+  }
+
+  func upgrade(package: String) async {
+    isRunningOperation = true
+    showLogs = true
+    operationOutput = "Starting upgrade of \(package)...\n"
+
+    for await output in service.performAction(arguments: ["upgrade", "--", package]) {
+      operationOutput += output
     }
-    
-    func upgrade(package: String) async {
-        isRunningOperation = true
-        showLogs = true
-        operationOutput = "Starting upgrade of \(package)...\n"
-        
-        for await output in service.performAction(arguments: ["upgrade", "--", package]) {
-            operationOutput += output
-        }
-        
-        isRunningOperation = false
-        await refresh()
+
+    isRunningOperation = false
+    await refresh()
+  }
+
+  func upgradeAll() async {
+    isRunningOperation = true
+    showLogs = true
+    operationOutput = "Starting upgrade of all outdated packages...\n"
+
+    for await output in service.performAction(arguments: ["upgrade"]) {
+      operationOutput += output
     }
-    
-    func upgradeAll() async {
-        isRunningOperation = true
-        showLogs = true
-        operationOutput = "Starting upgrade of all outdated packages...\n"
-        
-        for await output in service.performAction(arguments: ["upgrade"]) {
-            operationOutput += output
-        }
-        
-        isRunningOperation = false
-        await refresh()
-    }
+
+    isRunningOperation = false
+    await refresh()
+  }
 }
