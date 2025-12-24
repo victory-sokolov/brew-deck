@@ -21,10 +21,10 @@ jobs:
         run: swiftlint lint --strict
 
       - name: Run swift-format lint
-        run: xcrun swift-format lint --recursive Snippex/
+        run: xcrun swift-format lint --recursive .
 
       - name: Build
-        run: xcodebuild -project Snippex.xcodeproj -scheme Snippex -configuration Debug build OTHER_SWIFT_FLAGS="-Xfrontend -strict-concurrency=complete"
+        run: xcodebuild -project BrewDeck.xcodeproj -scheme BrewDeck -configuration Debug build OTHER_SWIFT_FLAGS="-Xfrontend -strict-concurrency=complete"
 
       - name: Run tests
-        run: xcodebuild -project Snippex.xcodeproj -scheme Snippex -configuration Debug test OTHER_SWIFT_FLAGS="-Xfrontend -strict-concurrency=complete"
+        run: xcodebuild -project BrewDeck.xcodeproj -scheme BrewDeck -configuration Debug test OTHER_SWIFT_FLAGS="-Xfrontend -strict-concurrency=complete"
