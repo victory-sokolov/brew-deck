@@ -23,6 +23,13 @@ jobs:
       - name: Run swift-format lint
         run: xcrun swift-format lint --recursive .
 
+      - name: Run concurrency pattern checks
+        run: ./scripts/check-concurrency.sh
+        continue-on-error: true
+
+      - name: Xcode Static Analyzer
+        run: xcodebuild clean analyze -project BrewDeck.xcodeproj -scheme BrewDeck -configuration Debug OTHER_SWIFT_FLAGS="-Xfrontend -strict-concurrency=complete -Xfrontend -warn-concurrency"
+
       - name: Build
         run: xcodebuild -project BrewDeck.xcodeproj -scheme BrewDeck -configuration Debug build OTHER_SWIFT_FLAGS="-Xfrontend -strict-concurrency=complete"
 
