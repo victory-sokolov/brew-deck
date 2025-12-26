@@ -2,7 +2,7 @@ import XCTest
 
 @testable import BrewDeck
 
-final class BrewServiceTests: XCTestCase {
+final class BrewServiceParseDuTests: XCTestCase {
     func testParseDuOutputStandard() {
         let output = """
         100\t/opt/homebrew/Cellar/pkg1
@@ -64,7 +64,9 @@ final class BrewServiceTests: XCTestCase {
         let sizes = BrewService.parseDuOutput("")
         XCTAssertTrue(sizes.isEmpty)
     }
+}
 
+final class BrewServiceTests: XCTestCase {
     // MARK: - BrewService+Extensions Tests
 
     func testSearchPackagesWithShortQuery() async throws {
@@ -351,6 +353,9 @@ final class BrewServiceTests: XCTestCase {
         }
     }
     
+}
+
+final class BrewServiceNameMatchingTests: XCTestCase {
     func testNameMatchingVariations() {
         // Test the fuzzy name matching logic used in size assignment
         let testSizes = [
@@ -359,14 +364,14 @@ final class BrewServiceTests: XCTestCase {
             "firefox": 75 * 1024 * 1024,
             "docker-desktop": 200 * 1024 * 1024,
         ]
-        
+
         let testPackageNames = [
             "visual-studio-code",
             "Visual Studio Code",
             "visual-studio-code",
             "VISUAL-STUDIO-CODE",
         ]
-        
+
         // Test that all variations should match the same size
         for packageName in testPackageNames {
             var foundSize: Int64?
