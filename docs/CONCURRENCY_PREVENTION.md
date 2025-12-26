@@ -64,7 +64,7 @@ open build/analyzer-results/*.html
 ## 2. Xcode Build Settings (Already Configured ✅)
 
 Your project has these enabled:
-- `SWIFT_VERSION = 6.2.3`
+- `SWIFT_VERSION = 6.2.0`
 - `SWIFT_APPROACHABLE_CONCURRENCY = YES`
 - `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`
 
