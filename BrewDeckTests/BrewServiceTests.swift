@@ -2,6 +2,7 @@ import XCTest
 
 @testable import BrewDeck
 
+@MainActor
 final class BrewServiceParseDuTests: XCTestCase {
     func testParseDuOutputStandard() {
         let output = """
@@ -66,6 +67,7 @@ final class BrewServiceParseDuTests: XCTestCase {
     }
 }
 
+@MainActor
 final class BrewServiceTests: XCTestCase {
     // MARK: - BrewService+Extensions Tests
 
@@ -355,6 +357,7 @@ final class BrewServiceTests: XCTestCase {
     
 }
 
+@MainActor
 final class BrewServiceNameMatchingTests: XCTestCase {
     func testNameMatchingVariations() {
         // Test the fuzzy name matching logic used in size assignment
