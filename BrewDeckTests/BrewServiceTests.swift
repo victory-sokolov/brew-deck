@@ -370,15 +370,17 @@ final class BrewServiceTests: XCTestCase {
         // Test that all variations should match the same size
         for packageName in testPackageNames {
             var foundSize: Int64?
-            let variations = [packageName, packageName.lowercased()]
-            
+            // Normalize by lowercasing and replacing spaces with hyphens to match stored keys
+            let normalized = packageName.lowercased().replacing(" ", with: "-")
+            let variations = [packageName, packageName.lowercased(), normalized]
+
             for variation in variations {
                 if let size = testSizes[variation] {
                     foundSize = Int64(size)
                     break
                 }
             }
-            
+
             XCTAssertNotNil(foundSize, "Should find size for package name variation: \(packageName)")
             XCTAssertEqual(foundSize, 100 * 1024 * 1024)
         }

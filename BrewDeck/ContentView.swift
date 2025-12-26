@@ -2,7 +2,7 @@ import Observation
 import SwiftUI
 
 struct ContentView: View {
-    @State private var viewModel = BrewViewModel()
+    @StateObject private var viewModel = BrewViewModel()
     @State private var selection: NavigationItem? = .installed
     @State private var selectedPackage: Package?
 

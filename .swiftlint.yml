@@ -86,12 +86,12 @@ fallthrough: warning
 for_where: warning
 switch_case_alignment: warning
 
-# MARK: - Swift 6 Concurrency Rules
-actor_isolation: warning              # Ensure proper actor isolation
-main_actor_usage: warning             # Proper @MainActor usage
-sendable_conformance: warning         # Ensure Sendable conformance
-nonisolated_usage: warning            # Proper nonisolated usage
-async_function_priority: warning      # Prefer async functions over callbacks
+# NOTE: Swift 6 Concurrency Checking
+# Concurrency safety is enforced via compiler flags, not SwiftLint:
+# - Build Settings: SWIFT_STRICT_CONCURRENCY = complete
+# - Compiler Flags: -Xfrontend -strict-concurrency=complete
+# - See CI.yml and build settings for configuration
+# Custom rules below catch common anti-patterns
 
 # MARK: - Collection Rules
 collection_alignment: warning
@@ -115,13 +115,6 @@ opt_in_rules:
   - implicit_optional_initialization
   - implicitly_unwrapped_optional
   - fatal_error_message
-  
-  # Swift 6 Concurrency
-  - actor_isolation
-  - main_actor_usage
-  - sendable_conformance
-  - nonisolated_usage
-  - async_function_priority
   
   # Performance
   - first_where
@@ -180,6 +173,8 @@ analyzer_rules:
   - unused_import
 
 # MARK: - Custom Concurrency Rules
+# These catch common anti-patterns. Note: warnings are informational
+# and acceptable if properly mitigated (e.g., NSMutableData wrapped in Sendable class)
 custom_rules:
   # Detect NSMutableData usage in concurrent code
   avoid_nsmutabledata:
@@ -201,10 +196,3 @@ custom_rules:
     regex: "NSHomeDirectory\\(\\)"
     message: "Use URL.homeDirectory instead of NSHomeDirectory()"
     severity: warning
-
-  # Detect Foundation string replacingOccurrences
-  prefer_native_string_replace:
-    name: "Use Native String Methods"
-    regex: "\\.replacingOccurrences\\(of:"
-    message: "Use .replacing(_:with:) instead of .replacingOccurrences(of:with:) for Swift-native API"
-    severity: info

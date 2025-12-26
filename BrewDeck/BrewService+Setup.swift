@@ -13,8 +13,9 @@ extension BrewService {
         private let data: NSMutableData
         private let lock = NSLock()
         
-        init(data: NSMutableData) {
-            self.data = data
+        init() {
+            // swiftlint:disable:next avoid_nsmutabledata
+            self.data = NSMutableData()
         }
         
         nonisolated func append(_ newData: Data) {
@@ -99,10 +100,8 @@ extension BrewService {
         errorPipe: Pipe,
         continuation: CheckedContinuation<String, Error>,
     ) {
-        let outputData = NSMutableData()
-        let errorData = NSMutableData()
-        let outputWrapper = DataWrapper(data: outputData)
-        let errorWrapper = DataWrapper(data: errorData)
+        let outputWrapper = DataWrapper()
+        let errorWrapper = DataWrapper()
 
         setupReadabilityHandlers(outputPipe, errorPipe, outputWrapper, errorWrapper)
         setupTerminationHandler(
