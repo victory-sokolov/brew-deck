@@ -19,8 +19,7 @@ extension BrewService {
 
             // Only try to fetch size from du if JSON didn't provide it
             if pkg.sizeOnDisk == nil || pkg.sizeOnDisk == 0 {
-                let shortName = pkg.name.components(separatedBy: "/").last ?? pkg.name
-                let variations = [pkg.name, shortName, pkg.name.lowercased(), shortName.lowercased()]
+                let variations = nameVariations(for: pkg)
 
                 for variation in variations {
                     if let fetchedSize = sizes[variation] {
@@ -44,8 +43,7 @@ extension BrewService {
             var pkg = Package(from: cask)
 
             // Casks don't have installedSize in JSON, so always try to fetch from du
-            let shortName = pkg.name.components(separatedBy: "/").last ?? pkg.name
-            let variations = [pkg.name, shortName, pkg.name.lowercased(), shortName.lowercased()]
+            let variations = nameVariations(for: pkg)
 
             for variation in variations {
                 if let fetchedSize = sizes[variation] {
@@ -150,8 +148,30 @@ extension BrewService {
         for (key, value) in parsed {
             normalizedSizes[key] = value
             normalizedSizes[key.lowercased()] = value
+
+            let hyphenated = key.replacing(" ", with: "-")
+            normalizedSizes[hyphenated] = value
+            normalizedSizes[hyphenated.lowercased()] = value
         }
         return normalizedSizes
+    }
+
+    private func nameVariations(for pkg: Package) -> [String] {
+        let baseName = pkg.name
+        let shortName = baseName.components(separatedBy: "/").last ?? baseName
+        let candidates = [baseName, shortName]
+        var results: Set<String> = []
+
+        for name in candidates {
+            results.insert(name)
+            results.insert(name.lowercased())
+
+            let hyphenated = name.replacing(" ", with: "-")
+            results.insert(hyphenated)
+            results.insert(hyphenated.lowercased())
+        }
+
+        return Array(results)
     }
 
     static func parseDuOutput(_ output: String) -> [String: Int64] {
