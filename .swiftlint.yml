@@ -178,3 +178,33 @@ opt_in_rules:
 
 analyzer_rules:
   - unused_import
+
+# MARK: - Custom Concurrency Rules
+custom_rules:
+  # Detect NSMutableData usage in concurrent code
+  avoid_nsmutabledata:
+    name: "Avoid NSMutableData in Concurrent Code"
+    regex: "NSMutableData\\(\\)"
+    message: "NSMutableData is not Sendable. Use Data or wrap in a thread-safe Sendable class with proper locking"
+    severity: warning
+
+  # Detect old-style GCD instead of modern concurrency
+  avoid_dispatch_queue:
+    name: "Use Modern Swift Concurrency"
+    regex: "DispatchQueue\\.(main|global)\\.(async|sync)"
+    message: "Use async/await, Task, or actors instead of DispatchQueue for Swift 6 compatibility"
+    severity: warning
+
+  # Detect NSHomeDirectory (deprecated in favor of URL.homeDirectory)
+  avoid_nshome_directory:
+    name: "Use Modern URL API"
+    regex: "NSHomeDirectory\\(\\)"
+    message: "Use URL.homeDirectory instead of NSHomeDirectory()"
+    severity: warning
+
+  # Detect Foundation string replacingOccurrences
+  prefer_native_string_replace:
+    name: "Use Native String Methods"
+    regex: "\\.replacingOccurrences\\(of:"
+    message: "Use .replacing(_:with:) instead of .replacingOccurrences(of:with:) for Swift-native API"
+    severity: info
