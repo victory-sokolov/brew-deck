@@ -1,7 +1,8 @@
+import Observation
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var viewModel = BrewViewModel()
+    @State private var viewModel = BrewViewModel()
     @State private var selection: NavigationItem? = .installed
     @State private var selectedPackage: Package?
 
@@ -14,7 +15,8 @@ struct ContentView: View {
                 if selection == .settings {
                     SettingsView(viewModel: viewModel)
                 } else {
-                    PackageListView(mode: selection, viewModel: viewModel, selectedPackage: $selectedPackage)
+                    PackageListView(
+                        mode: selection, viewModel: viewModel, selectedPackage: $selectedPackage)
                 }
             } else {
                 Text("Select a category")
@@ -31,7 +33,7 @@ struct ContentView: View {
         .onAppear {
             selection = .installed
         }
-        .onChange(of: selectedPackage) { _ in
+        .onChange(of: selectedPackage) { _, _ in
             if !viewModel.isRunningOperation {
                 viewModel.showLogs = false
                 viewModel.operationOutput = ""

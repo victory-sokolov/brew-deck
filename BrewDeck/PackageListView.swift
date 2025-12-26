@@ -10,23 +10,24 @@ struct PackageListView: View {
     @State private var showOnlyOutdated = false
 
     var filteredPackages: [Package] {
-        let source: [Package] = switch mode {
-        case .search:
-            viewModel.searchResults
-        case .installed:
-            viewModel.installedPackages
-        case .updates:
-            viewModel.installedPackages.filter { pkg in
-                viewModel.outdatedPackages.contains { $0.name == pkg.name }
+        let source: [Package] =
+            switch mode {
+            case .search:
+                viewModel.searchResults
+            case .installed:
+                viewModel.installedPackages
+            case .updates:
+                viewModel.installedPackages.filter { pkg in
+                    viewModel.outdatedPackages.contains { $0.name == pkg.name }
+                }
+            case .settings:
+                []
             }
-        case .settings:
-            []
-        }
 
         return source.filter { pkg in
             let matchesSearch =
                 searchText.isEmpty || pkg.name.localizedCaseInsensitiveContains(searchText)
-                    || (pkg.description?.localizedCaseInsensitiveContains(searchText) ?? false)
+                || (pkg.description?.localizedCaseInsensitiveContains(searchText) ?? false)
             let matchesFilter = filter == nil || pkg.type == filter
             let matchesOutdated =
                 !showOnlyOutdated || viewModel.outdatedPackages.contains { $0.name == pkg.name }
@@ -117,7 +118,8 @@ struct PackageListView: View {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
                     TextField(
-                        "Search \(mode == .search ? "all" : "installed") packages...", text: $searchText,
+                        "Search \(mode == .search ? "all" : "installed") packages...",
+                        text: $searchText,
                     )
                     .textFieldStyle(.plain)
                     .onChange(of: searchText) { newValue in
@@ -258,7 +260,10 @@ struct PackageIcon: View {
                     ),
                 )
                 .shadow(
-                    color: (type == .formula ? Color.purple : Color.blue).opacity(0.3), radius: 4, x: 0, y: 2,
+                    color: (type == .formula ? Color.purple : Color.blue).opacity(0.3),
+                    radius: 4,
+                    x: 0,
+                    y: 2
                 )
 
             Image(systemName: type == .formula ? "terminal.fill" : "macwindow")

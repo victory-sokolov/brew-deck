@@ -24,7 +24,9 @@ struct SettingsView: View {
             Section("About") {
                 LabeledContent("Version", value: "1.0.0")
                 LabeledContent("App Name", value: "BrewDeck")
-                Link("Visit Website", destination: URL(string: "https://github.com/homebrew")!)
+                if let url = URL(string: "https://github.com/homebrew") {
+                    Link("Visit Website", destination: url)
+                }
             }
         }
         .formStyle(.grouped)

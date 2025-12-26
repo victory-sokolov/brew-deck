@@ -15,7 +15,7 @@ struct Package: Identifiable, Codable, Hashable {
     let installedVersion: String?
     let latestVersion: String
     let isOutdated: Bool
-    var sizeOnDisk: Int64? // Only for formulae usually
+    var sizeOnDisk: Int64?  // Only for formulae usually
     let lastUsedTime: Date?
     let installDate: Date?
 
@@ -28,7 +28,13 @@ struct Package: Identifiable, Codable, Hashable {
     }
 
     var formattedSize: String? {
-        guard let size = sizeOnDisk, size > 0 else { return nil }
+        guard let size = sizeOnDisk else { return nil }
+        
+        // Handle zero size (which is valid for symlinks) and very small sizes
+        if size == 0 {
+            return "0 bytes"
+        }
+        
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useAll]
         formatter.countStyle = .file
