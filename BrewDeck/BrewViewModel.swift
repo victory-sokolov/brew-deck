@@ -18,8 +18,7 @@ class BrewViewModel: ObservableObject {
 
     private let service = BrewService.shared
     private var searchTask: Task<Void, Never>?
-    private let cacheURL = FileManager.default.temporaryDirectory.appendingPathComponent(
-        "brew_cache.json")
+    private let cacheURL = FileManager.default.temporaryDirectory.appending(path: "brew_cache.json")
 
     var formattedTotalSize: String {
         let formatter = ByteCountFormatter()
@@ -37,15 +36,23 @@ class BrewViewModel: ObservableObject {
     }
 
     private func saveCache() {
-        try? JSONEncoder().encode(installedPackages).write(to: cacheURL)
+        do {
+            try JSONEncoder().encode(installedPackages).write(to: cacheURL)
+        } catch {
+            print("Error saving cache: \(error)")
+            self.error = "Failed to save cache: \(error.localizedDescription)"
+        }
     }
 
     private func loadCache() {
-        if let data = try? Data(contentsOf: cacheURL),
-           let cached = try? JSONDecoder().decode([Package].self, from: data)
-        {
+        do {
+            let data = try Data(contentsOf: cacheURL)
+            let cached = try JSONDecoder().decode([Package].self, from: data)
             installedPackages = cached
             totalDiskUsage = cached.compactMap(\.sizeOnDisk).reduce(0, +)
+        } catch {
+            print("Error loading cache: \(error)")
+            // Cache doesn't exist or is corrupted, start fresh
         }
     }
 
@@ -58,7 +65,7 @@ class BrewViewModel: ObservableObject {
 
             // Fetch outdated in parallel
             async let outdated = service.fetchOutdatedPackages()
-            let fetchedOutdated = await (try? outdated) ?? []
+            let fetchedOutdated = try await outdated
 
             await MainActor.run {
                 self.installedPackages = installed
@@ -67,8 +74,10 @@ class BrewViewModel: ObservableObject {
                 self.isLoading = false
             }
         } catch {
-            self.error = error.localizedDescription
-            isLoading = false
+            await MainActor.run {
+                self.error = error.localizedDescription
+                self.isLoading = false
+            }
         }
     }
 
@@ -107,11 +116,12 @@ class BrewViewModel: ObservableObject {
         showLogs = true
         operationOutput = "Starting uninstallation of \(package.name)...\n"
 
-        let args: [String] = if package.type == .cask {
-            ["uninstall", "--cask", "--zap", "--", package.name]
-        } else {
-            ["uninstall", "--", package.name]
-        }
+        let args: [String] =
+            if package.type == .cask {
+                ["uninstall", "--cask", "--zap", "--", package.name]
+            } else {
+                ["uninstall", "--", package.name]
+            }
 
         for await output in service.performAction(arguments: args) {
             operationOutput += output

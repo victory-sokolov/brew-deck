@@ -37,6 +37,18 @@ ast-grep --lang swift -p '.cornerRadius($RADIUS)'
 
 # Find fontWeight usage
 ast-grep --lang swift -p '.fontWeight(.bold)'
+
+# Find NSMutableData in concurrent contexts (potential Sendable issues)
+ast-grep --lang swift -p 'NSMutableData()'
+
+# Find non-Sendable captures in closures
+ast-grep --lang swift -p 'readabilityHandler = { $CAPTURE in $BODY }'
+
+# Find main actor isolation violations
+ast-grep --lang swift -p '@MainActor $DECL'
+
+# Find potential concurrency issues with mutable state
+ast-grep --lang swift -p 'var $VAR = false; $CLOSURE { $VAR = true }'
 ```
 
 ## Role
@@ -89,6 +101,153 @@ You are a **Senior iOS Engineer**, specializing in SwiftUI, SwiftData, and relat
 - Avoid `AnyView` unless it is absolutely required.
 - Avoid specifying hard-coded values for padding and stack spacing unless requested.
 - Avoid using UIKit colors in SwiftUI code. Use SwiftUI-native colors or wrap NSColor with `Color(NSColor.xxx)` when necessary, but avoid direct NSColor usage in SwiftUI contexts.
+
+## Swift 6 Concurrency Guidelines
+
+### Real-World Example: Process Output Collection
+The concurrency issues we fixed in BrewService demonstrate common patterns you'll encounter:
+
+```swift
+// ❌ Problem: NSMutableData captured in @Sendable closure
+let outputData = NSMutableData()
+process.standardOutput.readabilityHandler = { handle in
+    let data = handle.availableData
+    outputData.append(data) // Error: NSMutableData is not Sendable
+}
+
+// ✅ Solution: Thread-safe wrapper with proper synchronization
+let outputData = NSMutableData()
+let dataLock = NSLock()
+
+nonisolated class DataWrapper: @unchecked Sendable {
+    private let data: NSMutableData
+    private let lock: NSLock
+    
+    init(data: NSMutableData, lock: NSLock) {
+        self.data = data
+        self.lock = lock
+    }
+    
+    nonisolated func append(_ newData: Data) {
+        lock.lock()
+        data.append(newData)
+        lock.unlock()
+    }
+}
+
+let wrapper = DataWrapper(data: outputData, lock: dataLock)
+process.standardOutput.readabilityHandler = { handle in
+    let data = handle.availableData
+    wrapper.append(data) // ✅ Safe: wrapper is Sendable
+}
+```
+
+### Sendable Conformance
+- **Always prefer value types (structs, enums) for concurrent code** - they are implicitly Sendable
+- **Mark classes as `@unchecked Sendable` only when necessary** - and document why thread safety is guaranteed
+- **Use actors for shared mutable state** - instead of complex locking mechanisms
+- **Avoid NSMutableData in concurrent contexts** - use Data with proper synchronization instead
+
+### Common Concurrency Patterns
+
+#### ✅ Safe: Using Data with NSLock
+```swift
+// Good - Thread-safe data collection
+let dataLock = NSLock()
+var collectedData = Data()
+
+handler = { handle in
+    let newData = handle.availableData
+    if !newData.isEmpty {
+        dataLock.lock()
+        collectedData.append(newData)
+        dataLock.unlock()
+    }
+}
+```
+
+#### ❌ Unsafe: Capturing NSMutableData in closures
+```swift
+// Bad - NSMutableData is not Sendable
+let outputData = NSMutableData()
+handler = { handle in
+    let data = handle.availableData
+    outputData.append(data) // Compiler error: NSMutableData is not Sendable
+}
+```
+
+#### ✅ Safe: Sendable wrapper for non-Sendable types
+```swift
+// Good - Proper Sendable wrapper
+nonisolated class DataWrapper: @unchecked Sendable {
+    private let data: NSMutableData
+    private let lock = NSLock()
+    
+    init(data: NSMutableData) {
+        self.data = data
+    }
+    
+    nonisolated func append(_ newData: Data) {
+        lock.lock()
+        data.append(newData)
+        lock.unlock()
+    }
+}
+```
+
+### Process and Task Management
+- **Use `withCheckedThrowingContinuation` for callback-based APIs** - instead of manual continuation management
+- **Always resume continuations exactly once** - use defer or proper control flow
+- **Handle cancellation properly** - check `Task.isCancelled` in long-running operations
+- **Use structured concurrency** - prefer `TaskGroup` over manual task management
+
+### Main Actor Isolation
+- **Mark `@MainActor` for UI-related code** - especially view models and UI updates
+- **Use `nonisolated` judiciously** - only when you're certain about thread safety
+- **Avoid main actor isolation violations** - don't call main-actor-isolated methods from non-isolated contexts without proper handling
+
+### Common Pitfalls to Avoid
+
+1. **Mutable state capture in closures**
+   ```swift
+   // ❌ Bad
+   var isFinished = false
+   handler = {
+       isFinished = true // Error: mutation of captured var
+   }
+   
+   // ✅ Good
+   let lock = NSLock()
+   var isFinished = false
+   handler = {
+       lock.lock()
+       isFinished = true
+       lock.unlock()
+   }
+   ```
+
+2. **Non-Sendable type capture**
+   ```swift
+   // ❌ Bad
+   let fileHandle = FileHandle() // Not Sendable
+   Task {
+       fileHandle.readData() // Error: capture of non-Sendable type
+   }
+   
+   // ✅ Good
+   let data = try await Task {
+       try FileHandle(forReadingFrom: url).readToEnd() ?? Data()
+   }
+   ```
+
+3. **Missing await in async contexts**
+   ```swift
+   // ❌ Bad
+   let result = try run(arguments: ["--cellar"]) // Error: expression is 'async'
+   
+   // ✅ Good
+   let result = try await run(arguments: ["--cellar"])
+   ```
 
 ## Performance Guidelines
 
@@ -148,6 +307,14 @@ xcrun swift-format format --in-place --recursive --configuration .swift-format .
 # Run linting and formatting checks (should pass with no output/issues)
 swiftlint --strict
 xcrun swift-format lint --recursive --configuration .swift-format .
+
+# Check for Swift 6 concurrency issues
+swiftc -typecheck -swift-version 6 -strict-concurrency=complete Sources/**/*.swift
+
+# Find potential concurrency issues with ast-grep
+ast-grep --lang swift -p 'NSMutableData()' # Find non-Sendable types
+ast-grep --lang swift -p 'var $VAR = false; $CLOSURE { $VAR = true }' # Mutable captures
+ast-grep --lang swift -p '@Sendable { $CAPTURE in $BODY }' # Sendable closure issues
 
 # Run all tests (using modern Swift Testing framework)
 swift test

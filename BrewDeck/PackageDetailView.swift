@@ -20,7 +20,9 @@ struct PackageDetailView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     header(package)
 
-                    if let versionInfo = viewModel.outdatedPackages.first(where: { $0.name == package.name }) {
+                    if let versionInfo = viewModel.outdatedPackages.first(where: {
+                        $0.name == package.name
+                    }) {
                         updateCard(package, versionInfo)
                     }
 
@@ -176,8 +178,8 @@ struct PackageDetailView: View {
             if let size = package.formattedSize {
                 DetailRow(label: "Size on Disk", value: size)
             } else if package.isInstalled {
-                // If it's installed but size is 0 or nil, it might still be calculating
-                DetailRow(label: "Size on Disk", value: "Calculating...")
+                // If size is nil, show appropriate message
+                DetailRow(label: "Size on Disk", value: "Size not available")
                     .foregroundStyle(.secondary)
             }
 
@@ -210,7 +212,8 @@ struct PackageDetailView: View {
                     HStack(spacing: 12) {
                         Button {
                             NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(viewModel.operationOutput, forType: .string)
+                            NSPasteboard.general.setString(
+                                viewModel.operationOutput, forType: .string)
                         } label: {
                             Image(systemName: "doc.on.doc")
                                 .foregroundStyle(.secondary)

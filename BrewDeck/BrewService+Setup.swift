@@ -8,6 +8,28 @@
 import Foundation
 
 extension BrewService {
+    // Thread-safe wrapper for data collection in concurrent contexts
+    nonisolated class DataWrapper: @unchecked Sendable {
+        private let data: NSMutableData
+        private let lock = NSLock()
+        
+        init() {
+            // swiftlint:disable:next avoid_nsmutabledata
+            self.data = NSMutableData()
+        }
+        
+        nonisolated func append(_ newData: Data) {
+            lock.lock()
+            data.append(newData)
+            lock.unlock()
+        }
+        
+        nonisolated func getData() -> Data {
+            lock.lock()
+            defer { lock.unlock() }
+            return data as Data
+        }
+    }
     func setupAskPass() {
         let script = """
         #!/bin/bash
@@ -45,17 +67,17 @@ extension BrewService {
     func setupReadabilityHandlers(
         _ outputPipe: Pipe,
         _ errorPipe: Pipe,
-        _ outputData: NSMutableData,
-        _ errorData: NSMutableData,
+        _ outputWrapper: DataWrapper,
+        _ errorWrapper: DataWrapper,
     ) {
         outputPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            if !data.isEmpty { outputData.append(data) }
+            if !data.isEmpty { outputWrapper.append(data) }
         }
 
         errorPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
-            if !data.isEmpty { errorData.append(data) }
+            if !data.isEmpty { errorWrapper.append(data) }
         }
     }
 
@@ -78,16 +100,16 @@ extension BrewService {
         errorPipe: Pipe,
         continuation: CheckedContinuation<String, Error>,
     ) {
-        let outputData = NSMutableData()
-        let errorData = NSMutableData()
+        let outputWrapper = DataWrapper()
+        let errorWrapper = DataWrapper()
 
-        setupReadabilityHandlers(outputPipe, errorPipe, outputData, errorData)
+        setupReadabilityHandlers(outputPipe, errorPipe, outputWrapper, errorWrapper)
         setupTerminationHandler(
-            for: process, outputData: outputData, errorData: errorData, continuation: continuation,
+            for: process, outputWrapper: outputWrapper, errorWrapper: errorWrapper, continuation: continuation,
         )
     }
 
-    func finishProcess(
+    nonisolated func finishProcess(
         process: Process,
         continuation: CheckedContinuation<String, Error>,
         error: Error? = nil,
@@ -104,15 +126,15 @@ extension BrewService {
         }
     }
 
-    func handleProcessTermination(
+    nonisolated func handleProcessTermination(
         process: Process,
-        outputData: NSMutableData,
-        errorData: NSMutableData,
+        outputWrapper: DataWrapper,
+        errorWrapper: DataWrapper,
         continuation: CheckedContinuation<String, Error>,
     ) {
         if process.terminationStatus != 0 {
             let errorMessage =
-                String(data: errorData as Data, encoding: .utf8)?
+                String(data: errorWrapper.getData(), encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             finishProcess(
                 process: process,
@@ -122,7 +144,7 @@ extension BrewService {
                 ),
             )
         } else {
-            if let output = String(data: outputData as Data, encoding: .utf8) {
+            if let output = String(data: outputWrapper.getData(), encoding: .utf8) {
                 finishProcess(process: process, continuation: continuation, result: output)
             } else {
                 finishProcess(
@@ -134,24 +156,36 @@ extension BrewService {
 
     func setupTerminationHandler(
         for process: Process,
-        outputData: NSMutableData,
-        errorData: NSMutableData,
+        outputWrapper: DataWrapper,
+        errorWrapper: DataWrapper,
         continuation: CheckedContinuation<String, Error>,
     ) {
-        var isFinished = false
-        let lock = NSLock()
+        // Thread-safe wrapper for the isFinished flag
+        final class FinishedFlag: @unchecked Sendable {
+            private let lock = NSLock()
+            private nonisolated(unsafe) var value = false
+            
+            nonisolated func checkAndSet() -> Bool {
+                lock.lock()
+                defer { lock.unlock() }
+                if value {
+                    return true // Already finished
+                }
+                value = true
+                return false // Not finished yet, now set to true
+            }
+        }
+        
+        let finishedFlag = FinishedFlag()
 
         process.terminationHandler = { [weak self] process in
             guard let self else { return }
-            lock.lock()
-            defer { lock.unlock() }
-            guard !isFinished else { return }
-            isFinished = true
+            guard !finishedFlag.checkAndSet() else { return }
 
             handleProcessTermination(
                 process: process,
-                outputData: outputData,
-                errorData: errorData,
+                outputWrapper: outputWrapper,
+                errorWrapper: errorWrapper,
                 continuation: continuation,
             )
         }

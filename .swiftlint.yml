@@ -1,3 +1,4 @@
+# MARK: - Line Length Configuration
 line_length:
   warning: 200
   error: 400
@@ -46,9 +47,21 @@ trailing_whitespace:
   ignores_empty_lines: true
   ignores_comments: true
 
+trailing_comma:
+  mandatory_comma: true
+
 multiline_arguments:
   first_argument_location: next_line
   only_enforce_after_first_closure_on_first_line: true
+
+# MARK: - Auto-fixable Style Rules
+colon:
+  flexible_right_spacing: false
+comma: warning
+opening_brace: warning
+closing_brace: warning
+return_arrow_whitespace: warning
+statement_position: warning
 
 # MARK: - Naming
 identifier_name:
@@ -73,29 +86,113 @@ fallthrough: warning
 for_where: warning
 switch_case_alignment: warning
 
+# NOTE: Swift 6 Concurrency Checking
+# Concurrency safety is enforced via compiler flags, not SwiftLint:
+# - Build Settings: SWIFT_STRICT_CONCURRENCY = complete
+# - Compiler Flags: -Xfrontend -strict-concurrency=complete
+# - See CI.yml and build settings for configuration
+# Custom rules below catch common anti-patterns
+
+# MARK: - Collection Rules
+collection_alignment: warning
+syntactic_sugar: warning
+
+# MARK: - Function Rules
+function_body_length:
+  warning: 50
+  error: 100
+function_parameter_count:
+  warning: 5
+  error: 8
+
 # MARK: - Opt-in Rules (required for the rules above to take effect)
 opt_in_rules:
+  # Code Safety
   - array_init
   - contains_over_filter_count
   - contains_over_filter_is_empty
   - empty_count
   - implicit_optional_initialization
   - implicitly_unwrapped_optional
-  - fallthrough
-  - multiline_arguments
-  - explicit_init
   - fatal_error_message
+  
+  # Performance
   - first_where
   - last_where
-  - optional_enum_case_matching
   - reduce_into
   - sorted_first_last
-  - strong_iboutlet
   - toggle_bool
-  - weak_delegate
-  - redundant_nil_coalescing
   - contains_over_first_not_nil
+  - redundant_nil_coalescing
+  
+  # Memory Management
+  - weak_delegate
+  - strong_iboutlet
+  
+  # Clarity
+  - explicit_init
   - redundant_type_annotation
+  - redundant_void_return
+  - shorthand_operator
+  - vertical_whitespace
+  - redundant_objc_attribute
+  - redundant_string_enum_value
+  
+  # Style & Formatting
+  - fallthrough
+  - empty_enum_arguments
+  - for_where
+  - switch_case_alignment
+  - collection_alignment
+  - syntactic_sugar
+  - control_statement
+  - leading_whitespace
+  - unused_closure_parameter
+  - unused_optional_binding
+  - multiline_arguments
+  - multiline_parameters
+  - multiline_literal_brackets
+  - multiline_function_chains
+  - opening_brace
+  - closing_brace
+  - comma
+  - colon
+  - trailing_newline
+  - trailing_semicolon
+  - return_arrow_whitespace
+  - statement_position
+  
+  # Advanced
+  - optional_enum_case_matching
+  - pattern_matching_keywords
+  - prefer_self_type_over_type_of_self
+  - unused_enumerated
+  - valid_ibinspectable
 
 analyzer_rules:
   - unused_import
+
+# MARK: - Custom Concurrency Rules
+# These catch common anti-patterns. Note: warnings are informational
+# and acceptable if properly mitigated (e.g., NSMutableData wrapped in Sendable class)
+custom_rules:
+  # Detect NSMutableData usage in concurrent code
+  avoid_nsmutabledata:
+    name: "Avoid NSMutableData in Concurrent Code"
+    regex: "NSMutableData\\(\\)"
+    message: "NSMutableData is not Sendable. Use Data or wrap in a thread-safe Sendable class with proper locking"
+    severity: warning
+
+  # Detect old-style GCD instead of modern concurrency
+  avoid_dispatch_queue:
+    name: "Use Modern Swift Concurrency"
+    regex: "DispatchQueue\\.(main|global)\\.(async|sync)"
+    message: "Use async/await, Task, or actors instead of DispatchQueue for Swift 6 compatibility"
+    severity: warning
+
+  # Detect NSHomeDirectory (deprecated in favor of URL.homeDirectory)
+  avoid_nshome_directory:
+    name: "Use Modern URL API"
+    regex: "NSHomeDirectory\\(\\)"
+    message: "Use URL.homeDirectory instead of NSHomeDirectory()"
+    severity: warning
