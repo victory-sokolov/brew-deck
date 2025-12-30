@@ -21,14 +21,14 @@ struct SidebarView: View {
     @ObservedObject var viewModel: BrewViewModel
 
     var body: some View {
-        List(selection: $selection) {
+        List(selection: self.$selection) {
             Section("Main") {
                 ForEach([NavigationItem.search, .installed, .updates], id: \.self) { item in
                     NavigationLink(value: item) {
                         Label(item.rawValue, systemImage: item.icon)
-                            .badge(badgeFor(item))
+                            .badge(self.badgeFor(item))
                     }
-                    .accessibilityValue(badgeFor(item) > 0 ? "\(badgeFor(item)) items" : "")
+                    .accessibilityValue(self.badgeFor(item) > 0 ? "\(self.badgeFor(item)) items" : "")
                 }
             }
 
@@ -45,12 +45,12 @@ struct SidebarView: View {
         .overlay(alignment: .bottom) {
             VStack(spacing: 12) {
                 Button {
-                    Task { await viewModel.refresh() }
+                    Task { await self.viewModel.refresh() }
                 } label: {
                     HStack {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .symbolEffect(
-                                .pulse, options: .repeating, isActive: viewModel.isLoading)
+                                .pulse, options: .repeating, isActive: self.viewModel.isLoading)
                         Text("Sync Brew")
                             .bold()
                     }
@@ -86,9 +86,9 @@ struct SidebarView: View {
     private func badgeFor(_ item: NavigationItem) -> Int {
         switch item {
         case .installed:
-            viewModel.installedPackages.count
+            self.viewModel.installedPackages.count
         case .updates:
-            viewModel.outdatedPackages.count
+            self.viewModel.outdatedPackages.count
         default:
             0
         }

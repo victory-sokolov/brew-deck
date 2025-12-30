@@ -12,24 +12,25 @@ extension BrewService {
     nonisolated class DataWrapper: @unchecked Sendable {
         private let data: NSMutableData
         private let lock = NSLock()
-        
+
         init() {
             // swiftlint:disable:next avoid_nsmutabledata
             self.data = NSMutableData()
         }
-        
+
         nonisolated func append(_ newData: Data) {
-            lock.lock()
-            data.append(newData)
-            lock.unlock()
+            self.lock.lock()
+            self.data.append(newData)
+            self.lock.unlock()
         }
-        
+
         nonisolated func getData() -> Data {
-            lock.lock()
+            self.lock.lock()
             defer { lock.unlock() }
-            return data as Data
+            return self.data as Data
         }
     }
+
     func setupAskPass() {
         let script = """
         #!/bin/bash
@@ -68,8 +69,8 @@ extension BrewService {
         _ outputPipe: Pipe,
         _ errorPipe: Pipe,
         _ outputWrapper: DataWrapper,
-        _ errorWrapper: DataWrapper,
-    ) {
+        _ errorWrapper: DataWrapper)
+    {
         outputPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
             if !data.isEmpty { outputWrapper.append(data) }
@@ -84,8 +85,8 @@ extension BrewService {
     func setupTimeout(
         for process: Process,
         timeoutSeconds: Double,
-        continuation: CheckedContinuation<String, Error>,
-    ) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds) {
             if process.isRunning {
                 process.terminate()
@@ -98,23 +99,22 @@ extension BrewService {
         for process: Process,
         outputPipe: Pipe,
         errorPipe: Pipe,
-        continuation: CheckedContinuation<String, Error>,
-    ) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         let outputWrapper = DataWrapper()
         let errorWrapper = DataWrapper()
 
-        setupReadabilityHandlers(outputPipe, errorPipe, outputWrapper, errorWrapper)
-        setupTerminationHandler(
-            for: process, outputWrapper: outputWrapper, errorWrapper: errorWrapper, continuation: continuation,
-        )
+        self.setupReadabilityHandlers(outputPipe, errorPipe, outputWrapper, errorWrapper)
+        self.setupTerminationHandler(
+            for: process, outputWrapper: outputWrapper, errorWrapper: errorWrapper, continuation: continuation)
     }
 
     nonisolated func finishProcess(
         process: Process,
         continuation: CheckedContinuation<String, Error>,
         error: Error? = nil,
-        result: String? = nil,
-    ) {
+        result: String? = nil)
+    {
         // Stop readability handlers
         (process.standardOutput as? Pipe)?.fileHandleForReading.readabilityHandler = nil
         (process.standardError as? Pipe)?.fileHandleForReading.readabilityHandler = nil
@@ -130,26 +130,23 @@ extension BrewService {
         process: Process,
         outputWrapper: DataWrapper,
         errorWrapper: DataWrapper,
-        continuation: CheckedContinuation<String, Error>,
-    ) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         if process.terminationStatus != 0 {
             let errorMessage =
                 String(data: errorWrapper.getData(), encoding: .utf8)?
                     .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            finishProcess(
+            self.finishProcess(
                 process: process,
                 continuation: continuation,
                 error: BrewError.commandFailed(
-                    errorMessage.isEmpty ? "Exit code \(process.terminationStatus)" : errorMessage,
-                ),
-            )
+                    errorMessage.isEmpty ? "Exit code \(process.terminationStatus)" : errorMessage))
         } else {
             if let output = String(data: outputWrapper.getData(), encoding: .utf8) {
-                finishProcess(process: process, continuation: continuation, result: output)
+                self.finishProcess(process: process, continuation: continuation, result: output)
             } else {
-                finishProcess(
-                    process: process, continuation: continuation, error: BrewError.parsingError,
-                )
+                self.finishProcess(
+                    process: process, continuation: continuation, error: BrewError.parsingError)
             }
         }
     }
@@ -158,58 +155,56 @@ extension BrewService {
         for process: Process,
         outputWrapper: DataWrapper,
         errorWrapper: DataWrapper,
-        continuation: CheckedContinuation<String, Error>,
-    ) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         // Thread-safe wrapper for the isFinished flag
         final class FinishedFlag: @unchecked Sendable {
             private let lock = NSLock()
             private nonisolated(unsafe) var value = false
-            
+
             nonisolated func checkAndSet() -> Bool {
-                lock.lock()
+                self.lock.lock()
                 defer { lock.unlock() }
-                if value {
+                if self.value {
                     return true // Already finished
                 }
-                value = true
+                self.value = true
                 return false // Not finished yet, now set to true
             }
         }
-        
+
         let finishedFlag = FinishedFlag()
 
         process.terminationHandler = { [weak self] process in
             guard let self else { return }
             guard !finishedFlag.checkAndSet() else { return }
 
-            handleProcessTermination(
+            self.handleProcessTermination(
                 process: process,
                 outputWrapper: outputWrapper,
                 errorWrapper: errorWrapper,
-                continuation: continuation,
-            )
+                continuation: continuation)
         }
     }
 
     func executeProcess(
         arguments: [String],
         timeoutSeconds: Double,
-        continuation: CheckedContinuation<String, Error>,
-    ) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         let process = Process()
         let pipe = Pipe()
         let errorPipe = Pipe()
 
-        setupProcess(process, arguments: arguments, outputPipe: pipe, errorPipe: errorPipe)
+        self.setupProcess(process, arguments: arguments, outputPipe: pipe, errorPipe: errorPipe)
 
-        setupDataAndHandlers(
+        self.setupDataAndHandlers(
             for: process,
             outputPipe: pipe,
             errorPipe: errorPipe,
-            continuation: continuation,
-        )
+            continuation: continuation)
 
-        setupTimeout(for: process, timeoutSeconds: timeoutSeconds, continuation: continuation)
+        self.setupTimeout(for: process, timeoutSeconds: timeoutSeconds, continuation: continuation)
 
         do {
             print("🛠 BrewDeck: Executing \(arguments.joined(separator: " "))")

@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 class BrewViewModel: ObservableObject {
     @Published var installedPackages: [Package] = [] {
-        didSet { saveCache() }
+        didSet { self.saveCache() }
     }
 
     @Published var outdatedPackages: [OutdatedPackageInfo] = []
@@ -24,20 +24,20 @@ class BrewViewModel: ObservableObject {
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useAll]
         formatter.countStyle = .file
-        return formatter.string(fromByteCount: totalDiskUsage)
+        return formatter.string(fromByteCount: self.totalDiskUsage)
     }
 
     init() {
         print("📱 BrewViewModel Initialized. Service Version: \(BrewService.version)")
-        loadCache()
+        self.loadCache()
         Task {
-            await refresh()
+            await self.refresh()
         }
     }
 
     private func saveCache() {
         do {
-            try JSONEncoder().encode(installedPackages).write(to: cacheURL)
+            try JSONEncoder().encode(self.installedPackages).write(to: self.cacheURL)
         } catch {
             print("Error saving cache: \(error)")
             self.error = "Failed to save cache: \(error.localizedDescription)"
@@ -48,8 +48,8 @@ class BrewViewModel: ObservableObject {
         do {
             let data = try Data(contentsOf: cacheURL)
             let cached = try JSONDecoder().decode([Package].self, from: data)
-            installedPackages = cached
-            totalDiskUsage = cached.compactMap(\.sizeOnDisk).reduce(0, +)
+            self.installedPackages = cached
+            self.totalDiskUsage = cached.compactMap(\.sizeOnDisk).reduce(0, +)
         } catch {
             print("Error loading cache: \(error)")
             // Cache doesn't exist or is corrupted, start fresh
@@ -57,14 +57,14 @@ class BrewViewModel: ObservableObject {
     }
 
     func refresh() async {
-        isLoading = true
-        error = nil
+        self.isLoading = true
+        self.error = nil
 
         do {
             let installed = try await service.fetchInstalledPackages()
 
             // Fetch outdated in parallel
-            async let outdated = service.fetchOutdatedPackages()
+            async let outdated = self.service.fetchOutdatedPackages()
             let fetchedOutdated = try await outdated
 
             await MainActor.run {
@@ -83,38 +83,38 @@ class BrewViewModel: ObservableObject {
 
     func search(query: String) async {
         if query.count < 2 {
-            searchResults = []
+            self.searchResults = []
             return
         }
 
-        isLoading = true
+        self.isLoading = true
         do {
             let results = try await service.searchPackages(query: query)
-            searchResults = results
-            isLoading = false
+            self.searchResults = results
+            self.isLoading = false
         } catch {
             self.error = error.localizedDescription
-            isLoading = false
+            self.isLoading = false
         }
     }
 
     func install(package: String) async {
-        isRunningOperation = true
-        showLogs = true
-        operationOutput = "Starting installation of \(package)...\n"
+        self.isRunningOperation = true
+        self.showLogs = true
+        self.operationOutput = "Starting installation of \(package)...\n"
 
-        for await output in service.performAction(arguments: ["install", "--", package]) {
-            operationOutput += output
+        for await output in self.service.performAction(arguments: ["install", "--", package]) {
+            self.operationOutput += output
         }
 
-        isRunningOperation = false
-        await refresh()
+        self.isRunningOperation = false
+        await self.refresh()
     }
 
     func uninstall(package: Package) async {
-        isRunningOperation = true
-        showLogs = true
-        operationOutput = "Starting uninstallation of \(package.name)...\n"
+        self.isRunningOperation = true
+        self.showLogs = true
+        self.operationOutput = "Starting uninstallation of \(package.name)...\n"
 
         let args: [String] =
             if package.type == .cask {
@@ -123,37 +123,37 @@ class BrewViewModel: ObservableObject {
                 ["uninstall", "--", package.name]
             }
 
-        for await output in service.performAction(arguments: args) {
-            operationOutput += output
+        for await output in self.service.performAction(arguments: args) {
+            self.operationOutput += output
         }
 
-        isRunningOperation = false
-        await refresh()
+        self.isRunningOperation = false
+        await self.refresh()
     }
 
     func upgrade(package: String) async {
-        isRunningOperation = true
-        showLogs = true
-        operationOutput = "Starting upgrade of \(package)...\n"
+        self.isRunningOperation = true
+        self.showLogs = true
+        self.operationOutput = "Starting upgrade of \(package)...\n"
 
-        for await output in service.performAction(arguments: ["upgrade", "--", package]) {
-            operationOutput += output
+        for await output in self.service.performAction(arguments: ["upgrade", "--", package]) {
+            self.operationOutput += output
         }
 
-        isRunningOperation = false
-        await refresh()
+        self.isRunningOperation = false
+        await self.refresh()
     }
 
     func upgradeAll() async {
-        isRunningOperation = true
-        showLogs = true
-        operationOutput = "Starting upgrade of all outdated packages...\n"
+        self.isRunningOperation = true
+        self.showLogs = true
+        self.operationOutput = "Starting upgrade of all outdated packages...\n"
 
-        for await output in service.performAction(arguments: ["upgrade"]) {
-            operationOutput += output
+        for await output in self.service.performAction(arguments: ["upgrade"]) {
+            self.operationOutput += output
         }
 
-        isRunningOperation = false
-        await refresh()
+        self.isRunningOperation = false
+        await self.refresh()
     }
 }

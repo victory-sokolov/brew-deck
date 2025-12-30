@@ -99,8 +99,7 @@ final class BrewServiceTests: XCTestCase {
             lastUsedTime: nil,
             installDate: nil,
             dependencies: nil,
-            installationPath: nil,
-        )
+            installationPath: nil)
 
         XCTAssertNotNil(packageWithSize.formattedSize)
         XCTAssertTrue(
@@ -120,8 +119,7 @@ final class BrewServiceTests: XCTestCase {
             lastUsedTime: nil,
             installDate: nil,
             dependencies: nil,
-            installationPath: nil,
-        )
+            installationPath: nil)
 
         XCTAssertNil(packageWithoutSize.formattedSize)
     }
@@ -140,8 +138,7 @@ final class BrewServiceTests: XCTestCase {
             lastUsedTime: nil,
             installDate: nil,
             dependencies: nil,
-            installationPath: nil,
-        )
+            installationPath: nil)
 
         let notInstalledPackage = Package(
             name: "not-installed",
@@ -156,8 +153,7 @@ final class BrewServiceTests: XCTestCase {
             lastUsedTime: nil,
             installDate: nil,
             dependencies: nil,
-            installationPath: nil,
-        )
+            installationPath: nil)
 
         XCTAssertTrue(installedPackage.isInstalled)
         XCTAssertFalse(notInstalledPackage.isInstalled)
@@ -177,10 +173,8 @@ final class BrewServiceTests: XCTestCase {
                     runtimeDependencies: [FormulaDependency(fullName: "curl")],
                     installedOnRequest: true,
                     installedAsDependency: false,
-                    installedSize: 1024 * 1024,
-                ),
-            ],
-        )
+                    installedSize: 1024 * 1024),
+            ])
 
         let package = Package(from: formula)
 
@@ -205,8 +199,7 @@ final class BrewServiceTests: XCTestCase {
             homepage: "https://code.visualstudio.com",
             version: "1.80.0",
             installed: "1.79.0",
-            outdated: true,
-        )
+            outdated: true)
 
         let package = Package(from: cask)
 
@@ -228,8 +221,7 @@ final class BrewServiceTests: XCTestCase {
             name: "git",
             type: .formula,
             installedVersion: "2.38.0",
-            latestVersion: "2.39.0",
-        )
+            latestVersion: "2.39.0")
 
         XCTAssertEqual(info.name, "git")
         XCTAssertEqual(info.type, .formula)
@@ -264,8 +256,7 @@ final class BrewServiceTests: XCTestCase {
             lastUsedTime: Date(),
             installDate: Date(),
             dependencies: ["curl"],
-            installationPath: "/usr/local/Cellar/git",
-        )
+            installationPath: "/usr/local/Cellar/git")
 
         let data = try? JSONEncoder().encode(package)
         XCTAssertNotNil(data)
@@ -275,9 +266,9 @@ final class BrewServiceTests: XCTestCase {
         XCTAssertEqual(decoded?.type, package.type)
         XCTAssertEqual(decoded?.installedVersion, package.installedVersion)
     }
-    
+
     // MARK: - Size Calculation Tests (Comprehensive)
-    
+
     func testPackageFormattedSizeZeroBytes() {
         // Test zero size handling - this was the bug that caused "Calculating..."
         let packageWithZeroSize = Package(
@@ -289,58 +280,57 @@ final class BrewServiceTests: XCTestCase {
             installedVersion: "4.36.136",
             latestVersion: "4.36.136",
             isOutdated: false,
-            sizeOnDisk: 0,  // Zero size (common for symlinked casks)
+            sizeOnDisk: 0, // Zero size (common for symlinked casks)
             lastUsedTime: nil,
             installDate: nil,
             dependencies: nil,
-            installationPath: "/opt/homebrew/Caskroom/slack",
-        )
-        
+            installationPath: "/opt/homebrew/Caskroom/slack")
+
         // Should return "0 bytes" instead of nil (which caused "Calculating...")
         XCTAssertEqual(packageWithZeroSize.formattedSize, "0 bytes")
     }
-    
+
     func testSizeCalculationIntegration() async throws {
         // Test the complete size calculation pipeline
         let service = BrewService.shared
-        
+
         // Test that package sizes are properly calculated and assigned
         let sizes = await service.fetchPackageSizes()
-        
+
         // Should find some sizes (at least from Cellar if it exists)
         print("📊 Found \(sizes.count) package sizes in integration test")
-        
+
         // The test should pass regardless of what's actually installed
         // but we should be able to parse the output format correctly
-        XCTAssertGreaterThanOrEqual(sizes.count, 0)  // Allow for empty environments
-        
+        XCTAssertGreaterThanOrEqual(sizes.count, 0) // Allow for empty environments
+
         // If we found sizes, verify the format is correct
         if !sizes.isEmpty {
             let sample = sizes.first!
             print("📦 Sample size: \(sample.key) = \(sample.value) bytes")
-            XCTAssertGreaterThan(sample.value, 0)  // Size should be positive
-            XCTAssertFalse(sample.key.isEmpty)  // Package name should not be empty
+            XCTAssertGreaterThan(sample.value, 0) // Size should be positive
+            XCTAssertFalse(sample.key.isEmpty) // Package name should not be empty
         }
     }
-    
+
     func testSizeAssignmentToPackages() async throws {
         // Test that sizes are properly assigned to package objects
         let service = BrewService.shared
-        
+
         // Get installed packages
         let packages = try await service.fetchInstalledPackages()
-        
+
         print("📦 Found \(packages.count) total packages")
-        
+
         // Count packages with and without sizes
         let packagesWithSize = packages.filter { $0.sizeOnDisk != nil && $0.sizeOnDisk! > 0 }
         let packagesWithZeroSize = packages.filter { $0.sizeOnDisk == 0 }
         let packagesWithoutSize = packages.filter { $0.sizeOnDisk == nil }
-        
+
         print("✅ Packages with size: \(packagesWithSize.count)")
         print("⚠️ Packages with zero size: \(packagesWithZeroSize.count)")
         print("❌ Packages without size: \(packagesWithoutSize.count)")
-        
+
         // Verify formatting works for all cases
         for package in packages {
             if let size = package.sizeOnDisk {
@@ -354,7 +344,6 @@ final class BrewServiceTests: XCTestCase {
             }
         }
     }
-    
 }
 
 @MainActor

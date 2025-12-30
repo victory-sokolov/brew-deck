@@ -29,10 +29,10 @@ class BrewService {
 
     init() {
         let paths = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew", "/usr/bin/brew"]
-        brewPath =
+        self.brewPath =
             paths.first(where: { FileManager.default.fileExists(atPath: $0) }) ?? "/opt/homebrew/bin/brew"
         setupAskPass()
-        print("🚀 BrewService Initialized (v\(BrewService.version)). Brew path: \(brewPath)")
+        print("🚀 BrewService Initialized (v\(BrewService.version)). Brew path: \(self.brewPath)")
     }
 
     func run(arguments: [String], timeoutSeconds: Double = 60.0) async throws -> String {
@@ -40,8 +40,7 @@ class BrewService {
 
         return try await withCheckedThrowingContinuation { continuation in
             self.executeProcess(
-                arguments: arguments, timeoutSeconds: timeoutSeconds, continuation: continuation,
-            )
+                arguments: arguments, timeoutSeconds: timeoutSeconds, continuation: continuation)
         }
     }
 }
