@@ -28,6 +28,7 @@ struct SidebarView: View {
                         Label(item.rawValue, systemImage: item.icon)
                             .badge(badgeFor(item))
                     }
+                    .accessibilityValue(badgeFor(item) > 0 ? "\(badgeFor(item)) items" : "")
                 }
             }
 
@@ -59,6 +60,7 @@ struct SidebarView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(.blue)
                 .padding(.horizontal)
+                .accessibilityHint("Refreshes the list of installed packages and available updates")
 
                 Divider()
 

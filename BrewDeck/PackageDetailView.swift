@@ -121,6 +121,7 @@ struct PackageDetailView: View {
             }
             .buttonStyle(.borderedProminent)
             .disabled(viewModel.isRunningOperation)
+            .accessibilityHint("Updates this package to the latest available version")
         }
         .padding()
         .background(Color.blue.opacity(0.1))
@@ -142,6 +143,7 @@ struct PackageDetailView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .accessibilityHint("Installs the package using Homebrew")
             } else {
                 Button {
                     if let url = package.homepage, let nsURL = URL(string: url) {
@@ -153,6 +155,7 @@ struct PackageDetailView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
+                .accessibilityHint("Opens the package's homepage in your default web browser")
 
                 Button(role: .destructive) {
                     Task { await viewModel.uninstall(package: package) }
@@ -162,6 +165,7 @@ struct PackageDetailView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
+                .accessibilityHint("Removes the package from your system")
             }
         }
     }

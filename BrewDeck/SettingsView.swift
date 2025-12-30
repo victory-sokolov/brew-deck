@@ -10,6 +10,7 @@ struct SettingsView: View {
                     Task { await viewModel.refresh() }
                 }
                 .disabled(viewModel.isLoading)
+                .accessibilityHint("Reloads the list of installed packages and checks for updates")
 
                 if viewModel.isLoading {
                     HStack {
@@ -26,6 +27,7 @@ struct SettingsView: View {
                 LabeledContent("App Name", value: "BrewDeck")
                 if let url = URL(string: "https://github.com/homebrew") {
                     Link("Visit Website", destination: url)
+                        .accessibilityHint("Opens the Homebrew website in your default web browser")
                 }
             }
         }

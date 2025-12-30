@@ -56,6 +56,7 @@ struct PackageListView: View {
                             .foregroundStyle(.white.opacity(0.7))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss error")
                 }
                 .padding(8)
                 .background(Color.red.opacity(0.8))
@@ -110,6 +111,7 @@ struct PackageListView: View {
                     }
                     .buttonStyle(.bordered)
                     .disabled(viewModel.isRunningOperation)
+                    .accessibilityHint("Updates all outdated packages to their latest versions")
                 }
             }
 
@@ -136,6 +138,7 @@ struct PackageListView: View {
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
                     }
                 }
                 .padding(10)
@@ -239,6 +242,7 @@ struct PackageRow: View {
                     .fill(package.isInstalled ? Color.green : Color.secondary.opacity(0.2))
                     .frame(width: 8, height: 8)
                     .shadow(color: package.isInstalled ? .green.opacity(0.5) : .clear, radius: 2)
+                    .accessibilityLabel(package.isInstalled ? "Installed" : "Not installed")
             }
         }
         .padding(.vertical, 8)
