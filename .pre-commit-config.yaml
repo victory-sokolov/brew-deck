@@ -9,4 +9,4 @@ repos:
     rev: 0.62.2
     hooks:
       - id: swiftlint
-        args: [--config, .swiftlint.yml]
+        args: [--strict, --config, .swiftlint.yml]
