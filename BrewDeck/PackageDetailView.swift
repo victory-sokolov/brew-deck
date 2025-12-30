@@ -7,7 +7,7 @@ struct PackageDetailView: View {
     var currentPackage: Package? {
         guard let package else { return nil }
         // Try to find a matching package by name or ID
-        return viewModel.installedPackages.first(where: {
+        return self.viewModel.installedPackages.first(where: {
             $0.name == package.name || $0.name.lowercased() == package.name.lowercased()
                 || ($0.name.components(separatedBy: "/").last
                     == package.name.components(separatedBy: "/").last)
@@ -18,20 +18,20 @@ struct PackageDetailView: View {
         if let package = currentPackage {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    header(package)
+                    self.header(package)
 
                     if let versionInfo = viewModel.outdatedPackages.first(where: {
                         $0.name == package.name
                     }) {
-                        updateCard(package, versionInfo)
+                        self.updateCard(package, versionInfo)
                     }
 
-                    actions(package)
+                    self.actions(package)
 
-                    details(package)
+                    self.details(package)
 
-                    if viewModel.showLogs {
-                        operationLog
+                    if self.viewModel.showLogs {
+                        self.operationLog
                     }
 
                     Spacer()
@@ -66,8 +66,7 @@ struct PackageDetailView: View {
                 HStack {
                     CapsuleText(
                         text: package.type.rawValue.capitalized,
-                        color: package.type == .formula ? .purple : .blue,
-                    )
+                        color: package.type == .formula ? .purple : .blue)
                     if let fullName = package.fullName {
                         Text(fullName)
                             .font(.caption)
@@ -94,9 +93,7 @@ struct PackageDetailView: View {
                 .fill(Color(NSColor.controlBackgroundColor).opacity(0.5))
                 .overlay(
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1),
-                ),
-        )
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)))
     }
 
     private func updateCard(_ package: Package, _ info: OutdatedPackageInfo) -> some View {
@@ -109,39 +106,39 @@ struct PackageDetailView: View {
             }
 
             Text(
-                "Version \(info.latestVersion) is available. You are currently on \(info.installedVersion).",
-            )
-            .font(.subheadline)
+                "Version \(info.latestVersion) is available. You are currently on \(info.installedVersion).")
+                .font(.subheadline)
 
             Button {
-                Task { await viewModel.upgrade(package: package.name) }
+                Task { await self.viewModel.upgrade(package: package.name) }
             } label: {
                 Text("Upgrade to v\(info.latestVersion)")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(viewModel.isRunningOperation)
+            .disabled(self.viewModel.isRunningOperation)
+            .accessibilityHint("Updates this package to the latest available version")
         }
         .padding()
         .background(Color.blue.opacity(0.1))
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.blue.opacity(0.2), lineWidth: 1),
-        )
+                .stroke(Color.blue.opacity(0.2), lineWidth: 1))
     }
 
     private func actions(_ package: Package) -> some View {
         HStack(spacing: 16) {
             if !package.isInstalled {
                 Button {
-                    Task { await viewModel.install(package: package.name) }
+                    Task { await self.viewModel.install(package: package.name) }
                 } label: {
                     Label("Install", systemImage: "plus")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .accessibilityHint("Installs the package using Homebrew")
             } else {
                 Button {
                     if let url = package.homepage, let nsURL = URL(string: url) {
@@ -153,15 +150,17 @@ struct PackageDetailView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
+                .accessibilityHint("Opens the package's homepage in your default web browser")
 
                 Button(role: .destructive) {
-                    Task { await viewModel.uninstall(package: package) }
+                    Task { await self.viewModel.uninstall(package: package) }
                 } label: {
                     Label("Uninstall", systemImage: "trash")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
+                .accessibilityHint("Removes the package from your system")
             }
         }
     }
@@ -205,7 +204,7 @@ struct PackageDetailView: View {
                     .foregroundStyle(.secondary)
                 Spacer()
 
-                if viewModel.isRunningOperation {
+                if self.viewModel.isRunningOperation {
                     ProgressView()
                         .scaleEffect(0.5)
                 } else {
@@ -213,7 +212,8 @@ struct PackageDetailView: View {
                         Button {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(
-                                viewModel.operationOutput, forType: .string)
+                                self.viewModel.operationOutput,
+                                forType: .string)
                         } label: {
                             Image(systemName: "doc.on.doc")
                                 .foregroundStyle(.secondary)
@@ -222,8 +222,8 @@ struct PackageDetailView: View {
                         .help("Copy Logs")
 
                         Button {
-                            viewModel.showLogs = false
-                            viewModel.operationOutput = ""
+                            self.viewModel.showLogs = false
+                            self.viewModel.operationOutput = ""
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.secondary)
@@ -234,7 +234,7 @@ struct PackageDetailView: View {
             }
 
             ScrollView {
-                Text(viewModel.operationOutput)
+                Text(self.viewModel.operationOutput)
                     .font(.system(.caption, design: .monospaced))
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -254,10 +254,10 @@ struct DetailRow: View {
 
     var body: some View {
         HStack {
-            Text(label)
+            Text(self.label)
                 .foregroundStyle(.secondary)
             Spacer()
-            Text(value)
+            Text(self.value)
                 .multilineTextAlignment(.trailing)
         }
         .font(.subheadline)
@@ -269,12 +269,12 @@ struct CapsuleText: View {
     let color: Color
 
     var body: some View {
-        Text(text)
+        Text(self.text)
             .font(.system(size: 10, weight: .bold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(color.opacity(0.2))
-            .foregroundStyle(color)
+            .background(self.color.opacity(0.2))
+            .foregroundStyle(self.color)
             .cornerRadius(4)
     }
 }

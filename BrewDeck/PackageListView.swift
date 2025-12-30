@@ -11,14 +11,14 @@ struct PackageListView: View {
 
     var filteredPackages: [Package] {
         let source: [Package] =
-            switch mode {
+            switch self.mode {
             case .search:
-                viewModel.searchResults
+                self.viewModel.searchResults
             case .installed:
-                viewModel.installedPackages
+                self.viewModel.installedPackages
             case .updates:
-                viewModel.installedPackages.filter { pkg in
-                    viewModel.outdatedPackages.contains { $0.name == pkg.name }
+                self.viewModel.installedPackages.filter { pkg in
+                    self.viewModel.outdatedPackages.contains { $0.name == pkg.name }
                 }
             case .settings:
                 []
@@ -26,18 +26,18 @@ struct PackageListView: View {
 
         return source.filter { pkg in
             let matchesSearch =
-                searchText.isEmpty || pkg.name.localizedCaseInsensitiveContains(searchText)
-                || (pkg.description?.localizedCaseInsensitiveContains(searchText) ?? false)
-            let matchesFilter = filter == nil || pkg.type == filter
+                self.searchText.isEmpty || pkg.name.localizedCaseInsensitiveContains(self.searchText)
+                || (pkg.description?.localizedCaseInsensitiveContains(self.searchText) ?? false)
+            let matchesFilter = self.filter == nil || pkg.type == self.filter
             let matchesOutdated =
-                !showOnlyOutdated || viewModel.outdatedPackages.contains { $0.name == pkg.name }
+                !self.showOnlyOutdated || self.viewModel.outdatedPackages.contains { $0.name == pkg.name }
             return matchesSearch && matchesFilter && matchesOutdated
         }
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            self.header
 
             if let error = viewModel.error {
                 HStack {
@@ -50,12 +50,13 @@ struct PackageListView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Spacer()
                     Button {
-                        viewModel.error = nil
+                        self.viewModel.error = nil
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.white.opacity(0.7))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Dismiss error")
                 }
                 .padding(8)
                 .background(Color.red.opacity(0.8))
@@ -63,17 +64,16 @@ struct PackageListView: View {
                 .padding([.horizontal, .bottom])
             }
 
-            if viewModel.isLoading, filteredPackages.isEmpty {
+            if self.viewModel.isLoading, self.filteredPackages.isEmpty {
                 Spacer()
                 ProgressView()
                 Spacer()
             } else {
-                List(filteredPackages, selection: $selectedPackage) { package in
+                List(self.filteredPackages, selection: self.$selectedPackage) { package in
                     PackageRow(
                         package: package,
-                        isOutdated: viewModel.outdatedPackages.contains { $0.name == package.name },
-                    )
-                    .tag(package)
+                        isOutdated: self.viewModel.outdatedPackages.contains { $0.name == package.name })
+                        .tag(package)
                 }
             }
         }
@@ -83,15 +83,15 @@ struct PackageListView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 VStack(alignment: .leading) {
-                    Text(mode.rawValue)
+                    Text(self.mode.rawValue)
                         .font(.title)
                         .bold()
                     HStack(spacing: 8) {
-                        Text("\(filteredPackages.count) items")
+                        Text("\(self.filteredPackages.count) items")
 
-                        if mode == .installed || mode == .updates {
+                        if self.mode == .installed || self.mode == .updates {
                             Text("•")
-                            Text(viewModel.formattedTotalSize)
+                            Text(self.viewModel.formattedTotalSize)
                                 .foregroundStyle(.blue)
                                 .bold()
                         }
@@ -102,14 +102,15 @@ struct PackageListView: View {
 
                 Spacer()
 
-                if mode == .updates || mode == .installed {
+                if self.mode == .updates || self.mode == .installed {
                     Button {
-                        Task { await viewModel.upgradeAll() }
+                        Task { await self.viewModel.upgradeAll() }
                     } label: {
                         Label("Update All", systemImage: "arrow.clockwise.circle")
                     }
                     .buttonStyle(.bordered)
-                    .disabled(viewModel.isRunningOperation)
+                    .disabled(self.viewModel.isRunningOperation)
+                    .accessibilityHint("Updates all outdated packages to their latest versions")
                 }
             }
 
@@ -118,24 +119,24 @@ struct PackageListView: View {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
                     TextField(
-                        "Search \(mode == .search ? "all" : "installed") packages...",
-                        text: $searchText,
-                    )
-                    .textFieldStyle(.plain)
-                    .onChange(of: searchText) { newValue in
-                        if mode == .search {
-                            Task { await viewModel.search(query: newValue) }
+                        "Search \(self.mode == .search ? "all" : "installed") packages...",
+                        text: self.$searchText)
+                        .textFieldStyle(.plain)
+                        .onChange(of: self.searchText) { newValue in
+                            if self.mode == .search {
+                                Task { await self.viewModel.search(query: newValue) }
+                            }
                         }
-                    }
 
-                    if !searchText.isEmpty {
+                    if !self.searchText.isEmpty {
                         Button {
-                            searchText = ""
+                            self.searchText = ""
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.secondary)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Clear search")
                     }
                 }
                 .padding(10)
@@ -143,10 +144,9 @@ struct PackageListView: View {
                 .cornerRadius(10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.secondary.opacity(0.1), lineWidth: 1),
-                )
+                        .stroke(Color.secondary.opacity(0.1), lineWidth: 1))
 
-                Picker("", selection: $filter) {
+                Picker("", selection: self.$filter) {
                     Text("All Types").tag(nil as PackageType?)
                     Text("Formulae").tag(PackageType.formula)
                     Text("Casks").tag(PackageType.cask)
@@ -156,13 +156,15 @@ struct PackageListView: View {
             }
 
             HStack(spacing: 8) {
-                FilterButton(title: "All", isActive: filter == nil) { filter = nil }
-                FilterButton(title: "Formulae", isActive: filter == .formula) { filter = .formula }
-                FilterButton(title: "Casks", isActive: filter == .cask) { filter = .cask }
+                FilterButton(title: "All", isActive: self.filter == nil) { self.filter = nil }
+                FilterButton(title: "Formulae", isActive: self.filter == .formula) {
+                    self.filter = .formula
+                }
+                FilterButton(title: "Casks", isActive: self.filter == .cask) { self.filter = .cask }
 
-                if mode == .installed {
-                    FilterButton(title: "Outdated", isActive: showOnlyOutdated) {
-                        showOnlyOutdated.toggle()
+                if self.mode == .installed {
+                    FilterButton(title: "Outdated", isActive: self.showOnlyOutdated) {
+                        self.showOnlyOutdated.toggle()
                     }
                 }
             }
@@ -177,13 +179,13 @@ struct FilterButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Text(title)
+        Button(action: self.action) {
+            Text(self.title)
                 .font(.caption)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
-                .background(isActive ? Color.blue : Color.secondary.opacity(0.1))
-                .foregroundStyle(isActive ? .white : .primary)
+                .background(self.isActive ? Color.blue : Color.secondary.opacity(0.1))
+                .foregroundStyle(self.isActive ? .white : .primary)
                 .cornerRadius(15)
         }
         .buttonStyle(.plain)
@@ -196,15 +198,15 @@ struct PackageRow: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            PackageIcon(type: package.type)
+            PackageIcon(type: self.package.type)
                 .frame(width: 44, height: 44)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(package.name)
+                    Text(self.package.name)
                         .font(.headline)
 
-                    if isOutdated {
+                    if self.isOutdated {
                         Text("OUTDATED")
                             .font(.system(size: 8, weight: .black))
                             .padding(.horizontal, 6)
@@ -214,7 +216,7 @@ struct PackageRow: View {
                     }
                 }
 
-                Text(package.description ?? "No description available")
+                Text(self.package.description ?? "No description available")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -236,9 +238,10 @@ struct PackageRow: View {
                 }
 
                 Circle()
-                    .fill(package.isInstalled ? Color.green : Color.secondary.opacity(0.2))
+                    .fill(self.package.isInstalled ? Color.green : Color.secondary.opacity(0.2))
                     .frame(width: 8, height: 8)
-                    .shadow(color: package.isInstalled ? .green.opacity(0.5) : .clear, radius: 2)
+                    .shadow(color: self.package.isInstalled ? .green.opacity(0.5) : .clear, radius: 2)
+                    .accessibilityLabel(self.package.isInstalled ? "Installed" : "Not installed")
             }
         }
         .padding(.vertical, 8)
@@ -254,19 +257,16 @@ struct PackageIcon: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: type == .formula ? [.purple, .indigo] : [.blue, .cyan],
+                        colors: self.type == .formula ? [.purple, .indigo] : [.blue, .cyan],
                         startPoint: .topLeading,
-                        endPoint: .bottomTrailing,
-                    ),
-                )
+                        endPoint: .bottomTrailing))
                 .shadow(
-                    color: (type == .formula ? Color.purple : Color.blue).opacity(0.3),
+                    color: (self.type == .formula ? Color.purple : Color.blue).opacity(0.3),
                     radius: 4,
                     x: 0,
-                    y: 2
-                )
+                    y: 2)
 
-            Image(systemName: type == .formula ? "terminal.fill" : "macwindow")
+            Image(systemName: self.type == .formula ? "terminal.fill" : "macwindow")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(.white)
         }

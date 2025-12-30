@@ -17,11 +17,14 @@ jobs:
       - name: Install SwiftLint
         run: brew install swiftlint
 
+      - name: Install SwiftFormat
+        run: brew install swiftformat
+
       - name: Run SwiftLint
         run: swiftlint lint --strict
 
-      - name: Run swift-format lint
-        run: xcrun swift-format lint --recursive .
+      - name: Run SwiftFormat lint
+        run: swiftformat --dryrun --config .swiftformat .
 
       - name: Run concurrency pattern checks
         run: ./scripts/check-concurrency.sh

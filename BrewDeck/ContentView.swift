@@ -8,35 +8,37 @@ struct ContentView: View {
 
     var body: some View {
         NavigationSplitView {
-            SidebarView(selection: $selection, viewModel: viewModel)
+            SidebarView(selection: self.$selection, viewModel: self.viewModel)
                 .navigationSplitViewColumnWidth(min: 200, ideal: 250)
         } content: {
             if let selection {
                 if selection == .settings {
-                    SettingsView(viewModel: viewModel)
+                    SettingsView(viewModel: self.viewModel)
                 } else {
                     PackageListView(
-                        mode: selection, viewModel: viewModel, selectedPackage: $selectedPackage)
+                        mode: selection,
+                        viewModel: self.viewModel,
+                        selectedPackage: self.$selectedPackage)
                 }
             } else {
                 Text("Select a category")
                     .foregroundStyle(.secondary)
             }
         } detail: {
-            if selection != .settings {
-                PackageDetailView(package: selectedPackage, viewModel: viewModel)
+            if self.selection != .settings {
+                PackageDetailView(package: self.selectedPackage, viewModel: self.viewModel)
             } else {
                 Text("Settings Detail")
                     .foregroundStyle(.secondary)
             }
         }
         .onAppear {
-            selection = .installed
+            self.selection = .installed
         }
-        .onChange(of: selectedPackage) { _, _ in
-            if !viewModel.isRunningOperation {
-                viewModel.showLogs = false
-                viewModel.operationOutput = ""
+        .onChange(of: self.selectedPackage) { _, _ in
+            if !self.viewModel.isRunningOperation {
+                self.viewModel.showLogs = false
+                self.viewModel.operationOutput = ""
             }
         }
     }

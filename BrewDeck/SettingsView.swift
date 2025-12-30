@@ -7,11 +7,12 @@ struct SettingsView: View {
         Form {
             Section("Brew Settings") {
                 Button("Refresh Installed Packages") {
-                    Task { await viewModel.refresh() }
+                    Task { await self.viewModel.refresh() }
                 }
-                .disabled(viewModel.isLoading)
+                .disabled(self.viewModel.isLoading)
+                .accessibilityHint("Reloads the list of installed packages and checks for updates")
 
-                if viewModel.isLoading {
+                if self.viewModel.isLoading {
                     HStack {
                         ProgressView()
                             .scaleEffect(0.5)
@@ -26,6 +27,7 @@ struct SettingsView: View {
                 LabeledContent("App Name", value: "BrewDeck")
                 if let url = URL(string: "https://github.com/homebrew") {
                     Link("Visit Website", destination: url)
+                        .accessibilityHint("Opens the Homebrew website in your default web browser")
                 }
             }
         }

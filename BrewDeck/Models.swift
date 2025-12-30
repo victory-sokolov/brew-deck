@@ -6,7 +6,7 @@ enum PackageType: String, Codable, CaseIterable {
 }
 
 struct Package: Identifiable, Codable, Hashable {
-    var id: String { name }
+    var id: String { self.name }
     let name: String
     let fullName: String?
     let description: String?
@@ -15,7 +15,7 @@ struct Package: Identifiable, Codable, Hashable {
     let installedVersion: String?
     let latestVersion: String
     let isOutdated: Bool
-    var sizeOnDisk: Int64?  // Only for formulae usually
+    var sizeOnDisk: Int64? // Only for formulae usually
     let lastUsedTime: Date?
     let installDate: Date?
 
@@ -24,17 +24,17 @@ struct Package: Identifiable, Codable, Hashable {
     let installationPath: String?
 
     var isInstalled: Bool {
-        installedVersion != nil
+        self.installedVersion != nil
     }
 
     var formattedSize: String? {
         guard let size = sizeOnDisk else { return nil }
-        
+
         // Handle zero size (which is valid for symlinks) and very small sizes
         if size == 0 {
             return "0 bytes"
         }
-        
+
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useAll]
         formatter.countStyle = .file
@@ -142,34 +142,34 @@ struct OutdatedPackageInfo: Codable {
 
 extension Package {
     init(from formula: Formula) {
-        name = formula.name
-        fullName = formula.fullName
-        description = formula.desc
-        homepage = formula.homepage
-        type = .formula
-        installedVersion = formula.installed?.first?.version
-        latestVersion = formula.versions?.stable ?? ""
-        isOutdated = formula.outdated ?? false
-        sizeOnDisk = formula.installed?.first?.installedSize
-        lastUsedTime = nil
-        installDate = nil
-        dependencies = formula.installed?.first?.runtimeDependencies?.map(\.fullName)
-        installationPath = nil
+        self.name = formula.name
+        self.fullName = formula.fullName
+        self.description = formula.desc
+        self.homepage = formula.homepage
+        self.type = .formula
+        self.installedVersion = formula.installed?.first?.version
+        self.latestVersion = formula.versions?.stable ?? ""
+        self.isOutdated = formula.outdated ?? false
+        self.sizeOnDisk = formula.installed?.first?.installedSize
+        self.lastUsedTime = nil
+        self.installDate = nil
+        self.dependencies = formula.installed?.first?.runtimeDependencies?.map(\.fullName)
+        self.installationPath = nil
     }
 
     init(from cask: Cask) {
-        name = cask.token
-        fullName = cask.name?.first
-        description = cask.desc
-        homepage = cask.homepage
-        type = .cask
-        installedVersion = cask.installed
-        latestVersion = cask.version
-        isOutdated = cask.outdated ?? false
-        sizeOnDisk = nil
-        lastUsedTime = nil
-        installDate = nil
-        dependencies = nil
-        installationPath = nil
+        self.name = cask.token
+        self.fullName = cask.name?.first
+        self.description = cask.desc
+        self.homepage = cask.homepage
+        self.type = .cask
+        self.installedVersion = cask.installed
+        self.latestVersion = cask.version
+        self.isOutdated = cask.outdated ?? false
+        self.sizeOnDisk = nil
+        self.lastUsedTime = nil
+        self.installDate = nil
+        self.dependencies = nil
+        self.installationPath = nil
     }
 }

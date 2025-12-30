@@ -19,7 +19,7 @@ extension BrewService {
 
             // Only try to fetch size from du if JSON didn't provide it
             if pkg.sizeOnDisk == nil || pkg.sizeOnDisk == 0 {
-                let variations = nameVariations(for: pkg)
+                let variations = self.nameVariations(for: pkg)
 
                 for variation in variations {
                     if let fetchedSize = sizes[variation] {
@@ -43,7 +43,7 @@ extension BrewService {
             var pkg = Package(from: cask)
 
             // Casks don't have installedSize in JSON, so always try to fetch from du
-            let variations = nameVariations(for: pkg)
+            let variations = self.nameVariations(for: pkg)
 
             for variation in variations {
                 if let fetchedSize = sizes[variation] {
@@ -72,16 +72,14 @@ extension BrewService {
                 name: $0.name,
                 type: .formula,
                 installedVersion: $0.installedVersions.first ?? "",
-                latestVersion: $0.currentVersion,
-            )
+                latestVersion: $0.currentVersion)
         }
         outdated += response.casks.map {
             OutdatedPackageInfo(
                 name: $0.name,
                 type: .cask,
                 installedVersion: $0.installedVersions.first ?? "",
-                latestVersion: $0.currentVersion,
-            )
+                latestVersion: $0.currentVersion)
         }
         return outdated
     }
@@ -99,8 +97,8 @@ extension BrewService {
         if names.isEmpty { return [] }
         let limitedNames = Array(names.prefix(15))
         let infoOutput = try await run(
-            arguments: ["info", "--json=v2", "--"] + limitedNames, timeoutSeconds: 30,
-        )
+            arguments: ["info", "--json=v2", "--"] + limitedNames,
+            timeoutSeconds: 30)
         let response = try JSONDecoder().decode(BrewInfoResponse.self, from: Data(infoOutput.utf8))
         return response.formulae.map { Package(from: $0) } + response.casks.map { Package(from: $0) }
     }
@@ -108,10 +106,10 @@ extension BrewService {
     func fetchPackageSizes() async -> [String: Int64] {
         // Get correct paths from brew
         let cellarPath =
-            (try? await run(arguments: ["--cellar"]))?
+            await (try? self.run(arguments: ["--cellar"]))?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let caskroomPath =
-            (try? await run(arguments: ["--caskroom"]))?
+            await (try? self.run(arguments: ["--caskroom"]))?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         var pathsToScan: [String] = []
@@ -131,7 +129,7 @@ extension BrewService {
         // Note: -d 1 doesn't work properly on macOS, so we use /* instead
         let command = "du -sk \(pathsToScan.joined(separator: " ")) 2>/dev/null"
         print("🛠 Executing size command: \(command)")
-        let output = await (try? runShell(command: command)) ?? ""
+        let output = await (try? self.runShell(command: command)) ?? ""
         print("📊 du output length: \(output.count) characters")
 
         let parsed = BrewService.parseDuOutput(output)
