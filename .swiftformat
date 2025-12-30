@@ -46,7 +46,7 @@
 --stripunusedargs closure-only
 --header ignore
 --allman false
---commas always  # Enforce trailing commas to match SwiftLint mandatory_comma
+--trailing-commas always  # Enforce trailing commas to match SwiftLint mandatory_comma
 
 # Exclusions
 --exclude .build,.swiftpm,DerivedData,node_modules,dist,coverage,xcuserdata
