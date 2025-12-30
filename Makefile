@@ -1,7 +1,7 @@
 # Makefile for BrewDeck Swift Project
 # Provides commands for linting, formatting, and code quality checks
 
-.PHONY: help lint lint-fix format format-check concurrency-check analyze all check clean test
+.PHONY: help lint lint-fix format format-check concurrency-check analyze all check clean test pre-commit
 
 # Linting targets
 lint: ## Run SwiftLint to check for style violations
@@ -35,7 +35,10 @@ test: ## Run tests using Swift Testing framework
 	@echo "🧪 Running tests..."
 	xcodebuild -project BrewDeck.xcodeproj -scheme BrewDeck -destination 'platform=macOS' test 2>&1 | xcbeautify
 
-all: format lint-fix ## Format code and auto-fix linting issues
+# Pre-commit target
+pre-commit: ## Run pre-commit hooks on all files
+	@echo "🔗 Running pre-commit hooks..."
+	pre-commit run --all-files
 	@echo "✅ Code formatted and linting issues auto-fixed"
 
 check: format-check lint ## Check formatting and linting (no modifications)
