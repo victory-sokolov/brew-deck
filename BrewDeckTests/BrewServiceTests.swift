@@ -302,7 +302,12 @@ final class BrewServiceTests: XCTestCase {
 
         // The test should pass regardless of what's actually installed
         // but we should be able to parse the output format correctly
-        XCTAssertGreaterThanOrEqual(sizes.count, 0) // Allow for empty environments
+
+        // Verify all sizes are valid (non-negative) and package names are non-empty
+        for (packageName, size) in sizes {
+            XCTAssertFalse(packageName.isEmpty, "Package name should not be empty")
+            XCTAssertGreaterThanOrEqual(size, 0, "Package size should be non-negative")
+        }
 
         // If we found sizes, verify the format is correct
         if !sizes.isEmpty {
