@@ -123,12 +123,12 @@ let dataLock = NSLock()
 nonisolated class DataWrapper: @unchecked Sendable {
     private let data: NSMutableData
     private let lock: NSLock
-    
+
     init(data: NSMutableData, lock: NSLock) {
         self.data = data
         self.lock = lock
     }
-    
+
     nonisolated func append(_ newData: Data) {
         lock.lock()
         data.append(newData)
@@ -183,11 +183,11 @@ handler = { handle in
 nonisolated class DataWrapper: @unchecked Sendable {
     private let data: NSMutableData
     private let lock = NSLock()
-    
+
     init(data: NSMutableData) {
         self.data = data
     }
-    
+
     nonisolated func append(_ newData: Data) {
         lock.lock()
         data.append(newData)
@@ -216,7 +216,7 @@ nonisolated class DataWrapper: @unchecked Sendable {
    handler = {
        isFinished = true // Error: mutation of captured var
    }
-   
+
    // ✅ Good
    let lock = NSLock()
    var isFinished = false
@@ -234,7 +234,7 @@ nonisolated class DataWrapper: @unchecked Sendable {
    Task {
        fileHandle.readData() // Error: capture of non-Sendable type
    }
-   
+
    // ✅ Good
    let data = try await Task {
        try FileHandle(forReadingFrom: url).readToEnd() ?? Data()
@@ -245,7 +245,7 @@ nonisolated class DataWrapper: @unchecked Sendable {
    ```swift
    // ❌ Bad
    let result = try run(arguments: ["--cellar"]) // Error: expression is 'async'
-   
+
    // ✅ Good
    let result = try await run(arguments: ["--cellar"])
    ```
