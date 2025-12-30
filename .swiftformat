@@ -46,6 +46,11 @@
 --stripunusedargs closure-only
 --header ignore
 --allman false
+--disable braces
+--disable spaceAroundBraces
+--disable spaceInsideBraces
+--disable wrapMultilineStatementBraces
+--disable emptyBraces
 --trailing-commas always  # Enforce trailing commas to match SwiftLint mandatory_comma
 
 # Exclusions
