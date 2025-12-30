@@ -37,7 +37,8 @@ struct SidebarView: View {
             Section("System") {
                 NavigationLink(value: NavigationItem.settings) {
                     Label(
-                        NavigationItem.settings.rawValue, systemImage: NavigationItem.settings.icon)
+                        NavigationItem.settings.rawValue,
+                        systemImage: NavigationItem.settings.icon)
                 }
             }
         }
@@ -50,7 +51,9 @@ struct SidebarView: View {
                     HStack {
                         Image(systemName: "arrow.triangle.2.circlepath")
                             .symbolEffect(
-                                .pulse, options: .repeating, isActive: self.viewModel.isLoading)
+                                .pulse,
+                                options: .repeating,
+                                isActive: self.viewModel.isLoading)
                         Text("Sync Brew")
                             .bold()
                     }

@@ -97,17 +97,20 @@ extension BrewService {
         if names.isEmpty { return [] }
         let limitedNames = Array(names.prefix(15))
         let infoOutput = try await run(
-            arguments: ["info", "--json=v2", "--"] + limitedNames, timeoutSeconds: 30)
+            arguments: ["info", "--json=v2", "--"] + limitedNames,
+            timeoutSeconds: 30)
         let response = try JSONDecoder().decode(BrewInfoResponse.self, from: Data(infoOutput.utf8))
         return response.formulae.map { Package(from: $0) } + response.casks.map { Package(from: $0) }
     }
 
     func fetchPackageSizes() async -> [String: Int64] {
         // Get correct paths from brew
-        let cellarPath = await (try? self.run(arguments: ["--cellar"]))?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let caskroomPath = await (try? self.run(arguments: ["--caskroom"]))?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let cellarPath =
+            await (try? self.run(arguments: ["--cellar"]))?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let caskroomPath =
+            await (try? self.run(arguments: ["--caskroom"]))?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         var pathsToScan: [String] = []
         if !cellarPath.isEmpty, FileManager.default.fileExists(atPath: cellarPath) {

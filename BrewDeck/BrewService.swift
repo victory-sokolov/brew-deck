@@ -40,7 +40,9 @@ class BrewService {
 
         return try await withCheckedThrowingContinuation { continuation in
             self.executeProcess(
-                arguments: arguments, timeoutSeconds: timeoutSeconds, continuation: continuation)
+                arguments: arguments,
+                timeoutSeconds: timeoutSeconds,
+                continuation: continuation)
         }
     }
 }

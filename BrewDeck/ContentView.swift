@@ -16,7 +16,9 @@ struct ContentView: View {
                     SettingsView(viewModel: self.viewModel)
                 } else {
                     PackageListView(
-                        mode: selection, viewModel: self.viewModel, selectedPackage: self.$selectedPackage)
+                        mode: selection,
+                        viewModel: self.viewModel,
+                        selectedPackage: self.$selectedPackage)
                 }
             } else {
                 Text("Select a category")

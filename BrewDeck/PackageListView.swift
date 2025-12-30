@@ -157,7 +157,9 @@ struct PackageListView: View {
 
             HStack(spacing: 8) {
                 FilterButton(title: "All", isActive: self.filter == nil) { self.filter = nil }
-                FilterButton(title: "Formulae", isActive: self.filter == .formula) { self.filter = .formula }
+                FilterButton(title: "Formulae", isActive: self.filter == .formula) {
+                    self.filter = .formula
+                }
                 FilterButton(title: "Casks", isActive: self.filter == .cask) { self.filter = .cask }
 
                 if self.mode == .installed {

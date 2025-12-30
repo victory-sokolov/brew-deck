@@ -212,7 +212,8 @@ struct PackageDetailView: View {
                         Button {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(
-                                self.viewModel.operationOutput, forType: .string)
+                                self.viewModel.operationOutput,
+                                forType: .string)
                         } label: {
                             Image(systemName: "doc.on.doc")
                                 .foregroundStyle(.secondary)

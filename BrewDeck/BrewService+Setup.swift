@@ -106,7 +106,10 @@ extension BrewService {
 
         self.setupReadabilityHandlers(outputPipe, errorPipe, outputWrapper, errorWrapper)
         self.setupTerminationHandler(
-            for: process, outputWrapper: outputWrapper, errorWrapper: errorWrapper, continuation: continuation)
+            for: process,
+            outputWrapper: outputWrapper,
+            errorWrapper: errorWrapper,
+            continuation: continuation)
     }
 
     nonisolated func finishProcess(
@@ -146,7 +149,9 @@ extension BrewService {
                 self.finishProcess(process: process, continuation: continuation, result: output)
             } else {
                 self.finishProcess(
-                    process: process, continuation: continuation, error: BrewError.parsingError)
+                    process: process,
+                    continuation: continuation,
+                    error: BrewError.parsingError)
             }
         }
     }
