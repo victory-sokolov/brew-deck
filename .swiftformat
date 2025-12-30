@@ -5,7 +5,6 @@
 --selfrequired # List of functions that require explicit self
 --importgrouping testable-bottom # Group @testable imports at the bottom
 --extensionacl on-declarations # Set ACL on extension members
---emptybraces spacing
 
 
 # Indentation
@@ -16,7 +15,7 @@
 
 # Line breaks
 --linebreaks lf
---maxwidth 120
+--maxwidth 200  # Match SwiftLint line_length warning
 
 # Whitespace
 --trimwhitespace always
@@ -47,6 +46,7 @@
 --stripunusedargs closure-only
 --header ignore
 --allman false
+--commas always  # Enforce trailing commas to match SwiftLint mandatory_comma
 
 # Exclusions
 --exclude .build,.swiftpm,DerivedData,node_modules,dist,coverage,xcuserdata
