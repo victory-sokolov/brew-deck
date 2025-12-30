@@ -101,6 +101,7 @@ You are a **Senior iOS Engineer**, specializing in SwiftUI, SwiftData, and relat
 - Avoid `AnyView` unless it is absolutely required.
 - Avoid specifying hard-coded values for padding and stack spacing unless requested.
 - Avoid using UIKit colors in SwiftUI code. Use SwiftUI-native colors or wrap NSColor with `Color(NSColor.xxx)` when necessary, but avoid direct NSColor usage in SwiftUI contexts.
+- Always add accessibility modifiers such as `.accessibilityLabel()`, `.accessibilityHint()`, and `.accessibilityValue()` to interactive elements whenever possible to ensure the app is accessible to users with disabilities.
 
 ## Swift 6 Concurrency Guidelines
 
