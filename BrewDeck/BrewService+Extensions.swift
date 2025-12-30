@@ -104,9 +104,9 @@ extension BrewService {
 
     func fetchPackageSizes() async -> [String: Int64] {
         // Get correct paths from brew
-        let cellarPath = await (try? run(
-            arguments: ["--cellar"]))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let caskroomPath = await (try? run(arguments: ["--caskroom"]))?
+        let cellarPath = await (try? self.run(arguments: ["--cellar"]))?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let caskroomPath = await (try? self.run(arguments: ["--caskroom"]))?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         var pathsToScan: [String] = []

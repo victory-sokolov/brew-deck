@@ -69,7 +69,8 @@ extension BrewService {
         _ outputPipe: Pipe,
         _ errorPipe: Pipe,
         _ outputWrapper: DataWrapper,
-        _ errorWrapper: DataWrapper) {
+        _ errorWrapper: DataWrapper)
+    {
         outputPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
             if !data.isEmpty { outputWrapper.append(data) }
@@ -84,7 +85,8 @@ extension BrewService {
     func setupTimeout(
         for process: Process,
         timeoutSeconds: Double,
-        continuation: CheckedContinuation<String, Error>) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         DispatchQueue.global().asyncAfter(deadline: .now() + timeoutSeconds) {
             if process.isRunning {
                 process.terminate()
@@ -97,7 +99,8 @@ extension BrewService {
         for process: Process,
         outputPipe: Pipe,
         errorPipe: Pipe,
-        continuation: CheckedContinuation<String, Error>) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         let outputWrapper = DataWrapper()
         let errorWrapper = DataWrapper()
 
@@ -110,7 +113,8 @@ extension BrewService {
         process: Process,
         continuation: CheckedContinuation<String, Error>,
         error: Error? = nil,
-        result: String? = nil) {
+        result: String? = nil)
+    {
         // Stop readability handlers
         (process.standardOutput as? Pipe)?.fileHandleForReading.readabilityHandler = nil
         (process.standardError as? Pipe)?.fileHandleForReading.readabilityHandler = nil
@@ -126,7 +130,8 @@ extension BrewService {
         process: Process,
         outputWrapper: DataWrapper,
         errorWrapper: DataWrapper,
-        continuation: CheckedContinuation<String, Error>) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         if process.terminationStatus != 0 {
             let errorMessage =
                 String(data: errorWrapper.getData(), encoding: .utf8)?
@@ -150,7 +155,8 @@ extension BrewService {
         for process: Process,
         outputWrapper: DataWrapper,
         errorWrapper: DataWrapper,
-        continuation: CheckedContinuation<String, Error>) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         // Thread-safe wrapper for the isFinished flag
         final class FinishedFlag: @unchecked Sendable {
             private let lock = NSLock()
@@ -184,7 +190,8 @@ extension BrewService {
     func executeProcess(
         arguments: [String],
         timeoutSeconds: Double,
-        continuation: CheckedContinuation<String, Error>) {
+        continuation: CheckedContinuation<String, Error>)
+    {
         let process = Process()
         let pipe = Pipe()
         let errorPipe = Pipe()
