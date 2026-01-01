@@ -25,6 +25,18 @@ class BrewViewModel: ObservableObject {
     private var autoUpdateTask: Task<Void, Never>?
     private let cacheURL = FileManager.default.temporaryDirectory.appending(path: "brew_cache.json")
 
+    // MARK: - Constants
+
+    private static let autoUpdateInterval: TimeInterval = 24 * 60 * 60 // 24 hours
+
+    // MARK: - Formatters
+
+    private static let relativeDateFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
+
     var formattedTotalSize: String {
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useAll]
@@ -37,6 +49,11 @@ class BrewViewModel: ObservableObject {
         self.loadCache()
         Task {
             await self.refresh()
+        }
+
+        // Auto-start auto-update if it was previously enabled
+        if self.autoUpdateEnabled {
+            self.startAutoUpdate()
         }
     }
 
@@ -173,18 +190,21 @@ class BrewViewModel: ObservableObject {
     }
 
     private func startAutoUpdate() {
-        guard self.autoUpdateEnabled else { return }
-
+        // Cancel any existing task first to avoid overlapping tasks
         self.autoUpdateTask?.cancel()
 
+        // Create new task - the caller (setAutoUpdateEnabled) has already verified autoUpdateEnabled is true
         self.autoUpdateTask = Task {
-            while self.autoUpdateEnabled, !Task.isCancelled {
+            while !Task.isCancelled {
+                // Check if auto-update is still enabled before performing update
+                guard self.autoUpdateEnabled else { break }
+
                 await self.performAutoUpdate()
 
-                let updateInterval: TimeInterval = 24 * 60 * 60
-                try? await Task.sleep(for: .seconds(updateInterval))
+                // Check again after update before sleeping
+                guard self.autoUpdateEnabled, !Task.isCancelled else { break }
 
-                if Task.isCancelled { break }
+                try? await Task.sleep(for: .seconds(Self.autoUpdateInterval))
             }
         }
     }
@@ -195,10 +215,13 @@ class BrewViewModel: ObservableObject {
     }
 
     private func performAutoUpdate() async {
-        guard self.autoUpdateEnabled else { return }
+        guard self.autoUpdateEnabled, !Task.isCancelled else { return }
 
         do {
             let outdated = try await self.service.fetchOutdatedPackages()
+
+            // Check for cancellation after network call
+            guard !Task.isCancelled else { return }
 
             guard !outdated.isEmpty else {
                 await MainActor.run {
@@ -213,17 +236,36 @@ class BrewViewModel: ObservableObject {
             }
 
             for await output in self.service.performAction(arguments: ["upgrade"]) {
+                // Check for cancellation during streaming output
+                guard !Task.isCancelled else { return }
                 await MainActor.run {
                     self.operationOutput += output
                 }
             }
 
+            // Final cancellation check before completing
+            guard !Task.isCancelled else { return }
+
             await MainActor.run {
                 self.lastAutoUpdateTime = Date()
+                // Append completion message
+                self.operationOutput += "\n✅ Auto-update completed successfully at \(Date().formatted(date: .omitted, time: .standard))"
             }
 
             await self.refresh()
+
+            // Auto-hide logs after 30 seconds for background auto-updates
+            try? await Task.sleep(for: .seconds(30))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                // Only hide if not showing a manual operation
+                if !self.isRunningOperation {
+                    self.showLogs = false
+                }
+            }
         } catch {
+            // Only show error if not cancelled
+            guard !Task.isCancelled else { return }
             await MainActor.run {
                 self.error = "Auto-update failed: \(error.localizedDescription)"
             }
@@ -239,9 +281,7 @@ class BrewViewModel: ObservableObject {
             return "Auto-update enabled (waiting for next check)"
         }
 
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .full
-        let timeString = formatter.localizedString(for: lastTime, relativeTo: Date())
+        let timeString = Self.relativeDateFormatter.localizedString(for: lastTime, relativeTo: Date())
 
         return "Last auto-update: \(timeString)"
     }

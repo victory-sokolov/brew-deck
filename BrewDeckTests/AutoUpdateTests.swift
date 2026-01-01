@@ -7,6 +7,18 @@ import XCTest
 
 @MainActor
 final class AutoUpdateTests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        // Ensure a clean slate before each test
+        UserDefaults.standard.removeObject(forKey: "autoUpdateEnabled")
+    }
+
+    override func tearDown() {
+        // Clean up after each test
+        UserDefaults.standard.removeObject(forKey: "autoUpdateEnabled")
+        super.tearDown()
+    }
+
     func testAutoUpdateToggle() {
         // Test that auto-update can be enabled and disabled
         let viewModel = BrewViewModel()
