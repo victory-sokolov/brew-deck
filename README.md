@@ -6,6 +6,7 @@ BrewDeck is a user-friendly macOS GUI application built with SwiftUI that simpli
 
 - **Install Packages**: Search and install new Homebrew packages directly from the app.
 - **Update Packages**: Keep your installed packages up to date with one-click updates.
+- **Auto-Update Packages**: Enable automatic updates to keep your packages up-to-date every 24 hours.
 - **Uninstall Packages**: Remove unwanted packages effortlessly.
 - **Package Details**: View detailed information about packages, including descriptions and versions.
 - **Sidebar Navigation**: Intuitive sidebar for easy navigation between package lists, settings, and more.
@@ -43,6 +44,22 @@ BrewDeck is a user-friendly macOS GUI application built with SwiftUI that simpli
 4. To update or uninstall:
    - Select a package from the list.
    - Use the available actions.
+
+### Auto-Update Feature
+
+BrewDeck includes an auto-update feature that automatically updates your Homebrew packages every 24 hours:
+
+1. Navigate to **Settings** in the sidebar.
+2. Enable the **"Auto-update packages"** toggle.
+3. Once enabled, BrewDeck will:
+   - Check for outdated packages every 24 hours
+   - Automatically update any outdated packages
+   - Display update progress in the operation logs
+   - Show the last auto-update time in the status
+
+The auto-update setting persists across app restarts, so you only need to enable it once. You can disable it at any time by turning off the toggle in Settings.
+
+**Note**: The auto-update feature requires the app to be running. If you close BrewDeck, auto-update will pause and resume when you launch the app again.
 
 ## Contributing
 

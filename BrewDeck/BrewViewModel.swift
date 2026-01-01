@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftUI
 
 @MainActor
 class BrewViewModel: ObservableObject {
@@ -16,9 +17,25 @@ class BrewViewModel: ObservableObject {
     @Published var showLogs = false
     @Published var totalDiskUsage: Int64 = 0
 
+    @AppStorage("autoUpdateEnabled") private(set) var autoUpdateEnabled = false
+    @Published var lastAutoUpdateTime: Date?
+
     private let service = BrewService.shared
     private var searchTask: Task<Void, Never>?
+    private var autoUpdateTask: Task<Void, Never>?
     private let cacheURL = FileManager.default.temporaryDirectory.appending(path: "brew_cache.json")
+
+    // MARK: - Constants
+
+    private static let autoUpdateInterval: TimeInterval = 24 * 60 * 60 // 24 hours
+
+    // MARK: - Formatters
+
+    private static let relativeDateFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        return formatter
+    }()
 
     var formattedTotalSize: String {
         let formatter = ByteCountFormatter()
@@ -32,6 +49,11 @@ class BrewViewModel: ObservableObject {
         self.loadCache()
         Task {
             await self.refresh()
+        }
+
+        // Auto-start auto-update if it was previously enabled
+        if self.autoUpdateEnabled {
+            self.startAutoUpdate()
         }
     }
 
@@ -155,5 +177,128 @@ class BrewViewModel: ObservableObject {
 
         self.isRunningOperation = false
         await self.refresh()
+    }
+
+    func setAutoUpdateEnabled(_ enabled: Bool) {
+        self.autoUpdateEnabled = enabled
+
+        if enabled {
+            self.startAutoUpdate()
+        } else {
+            self.stopAutoUpdate()
+        }
+    }
+
+    private func startAutoUpdate() {
+        // Cancel any existing task first to avoid overlapping tasks
+        self.autoUpdateTask?.cancel()
+
+        // Create new task - the caller (setAutoUpdateEnabled) has already verified autoUpdateEnabled is true
+        self.autoUpdateTask = Task {
+            while !Task.isCancelled {
+                // Check if auto-update is still enabled before performing update
+                guard self.autoUpdateEnabled else { break }
+
+                await self.performAutoUpdate()
+
+                // Check again after update before sleeping
+                guard self.autoUpdateEnabled, !Task.isCancelled else { break }
+
+                try? await Task.sleep(for: .seconds(Self.autoUpdateInterval))
+            }
+        }
+    }
+
+    private func stopAutoUpdate() {
+        self.autoUpdateTask?.cancel()
+        self.autoUpdateTask = nil
+    }
+
+    deinit {
+        // Ensure any ongoing auto-update task is cancelled when the view model is deallocated
+        self.autoUpdateTask?.cancel()
+    }
+
+    private func performAutoUpdate() async {
+        guard self.autoUpdateEnabled, !Task.isCancelled else { return }
+
+        // Set operation lock to prevent concurrent operations
+        await MainActor.run {
+            self.isRunningOperation = true
+        }
+
+        // Ensure lock is always cleared when exiting
+        defer {
+            Task { @MainActor in
+                self.isRunningOperation = false
+            }
+        }
+
+        do {
+            let outdated = try await self.service.fetchOutdatedPackages()
+
+            // Check for cancellation after network call
+            guard !Task.isCancelled else { return }
+
+            guard !outdated.isEmpty else {
+                await MainActor.run {
+                    self.lastAutoUpdateTime = Date()
+                }
+                return
+            }
+
+            await MainActor.run {
+                self.operationOutput = "Auto-updating \(outdated.count) package(s)...\n"
+                self.showLogs = true
+            }
+
+            for await output in self.service.performAction(arguments: ["upgrade"]) {
+                // Check for cancellation during streaming output
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    self.operationOutput += output
+                }
+            }
+
+            // Final cancellation check before completing
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                self.lastAutoUpdateTime = Date()
+                // Append completion message
+                self.operationOutput += "\n✅ Auto-update completed successfully at \(Date().formatted(date: .omitted, time: .standard))"
+            }
+
+            await self.refresh()
+
+            // Auto-hide logs after 30 seconds for background auto-updates
+            try? await Task.sleep(for: .seconds(30))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                // Note: isRunningOperation is already cleared by defer, so we can't check it here
+                // Just hide the logs if task wasn't cancelled
+                self.showLogs = false
+            }
+        } catch {
+            // Only show error if not cancelled
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self.error = "Auto-update failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    var autoUpdateStatusMessage: String {
+        if !self.autoUpdateEnabled {
+            return "Auto-update is disabled"
+        }
+
+        guard let lastTime = self.lastAutoUpdateTime else {
+            return "Auto-update enabled (waiting for next check)"
+        }
+
+        let timeString = Self.relativeDateFormatter.localizedString(for: lastTime, relativeTo: Date())
+
+        return "Last auto-update: \(timeString)"
     }
 }
