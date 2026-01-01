@@ -214,8 +214,25 @@ class BrewViewModel: ObservableObject {
         self.autoUpdateTask = nil
     }
 
+    deinit {
+        // Ensure any ongoing auto-update task is cancelled when the view model is deallocated
+        self.autoUpdateTask?.cancel()
+    }
+
     private func performAutoUpdate() async {
         guard self.autoUpdateEnabled, !Task.isCancelled else { return }
+
+        // Set operation lock to prevent concurrent operations
+        await MainActor.run {
+            self.isRunningOperation = true
+        }
+
+        // Ensure lock is always cleared when exiting
+        defer {
+            Task { @MainActor in
+                self.isRunningOperation = false
+            }
+        }
 
         do {
             let outdated = try await self.service.fetchOutdatedPackages()
@@ -258,10 +275,9 @@ class BrewViewModel: ObservableObject {
             try? await Task.sleep(for: .seconds(30))
             guard !Task.isCancelled else { return }
             await MainActor.run {
-                // Only hide if not showing a manual operation
-                if !self.isRunningOperation {
-                    self.showLogs = false
-                }
+                // Note: isRunningOperation is already cleared by defer, so we can't check it here
+                // Just hide the logs if task wasn't cancelled
+                self.showLogs = false
             }
         } catch {
             // Only show error if not cancelled
