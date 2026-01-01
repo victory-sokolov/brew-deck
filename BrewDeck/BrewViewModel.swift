@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftUI
 
 @MainActor
 class BrewViewModel: ObservableObject {
@@ -16,8 +17,12 @@ class BrewViewModel: ObservableObject {
     @Published var showLogs = false
     @Published var totalDiskUsage: Int64 = 0
 
+    @AppStorage("autoUpdateEnabled") private(set) var autoUpdateEnabled = false
+    @Published var lastAutoUpdateTime: Date?
+
     private let service = BrewService.shared
     private var searchTask: Task<Void, Never>?
+    private var autoUpdateTask: Task<Void, Never>?
     private let cacheURL = FileManager.default.temporaryDirectory.appending(path: "brew_cache.json")
 
     var formattedTotalSize: String {
@@ -155,5 +160,89 @@ class BrewViewModel: ObservableObject {
 
         self.isRunningOperation = false
         await self.refresh()
+    }
+
+    func setAutoUpdateEnabled(_ enabled: Bool) {
+        self.autoUpdateEnabled = enabled
+
+        if enabled {
+            self.startAutoUpdate()
+        } else {
+            self.stopAutoUpdate()
+        }
+    }
+
+    private func startAutoUpdate() {
+        guard self.autoUpdateEnabled else { return }
+
+        self.autoUpdateTask?.cancel()
+
+        self.autoUpdateTask = Task {
+            while self.autoUpdateEnabled, !Task.isCancelled {
+                await self.performAutoUpdate()
+
+                let updateInterval: TimeInterval = 24 * 60 * 60
+                try? await Task.sleep(for: .seconds(updateInterval))
+
+                if Task.isCancelled { break }
+            }
+        }
+    }
+
+    private func stopAutoUpdate() {
+        self.autoUpdateTask?.cancel()
+        self.autoUpdateTask = nil
+    }
+
+    private func performAutoUpdate() async {
+        guard self.autoUpdateEnabled else { return }
+
+        do {
+            let outdated = try await self.service.fetchOutdatedPackages()
+
+            guard !outdated.isEmpty else {
+                await MainActor.run {
+                    self.lastAutoUpdateTime = Date()
+                }
+                return
+            }
+
+            await MainActor.run {
+                self.operationOutput = "Auto-updating \(outdated.count) package(s)...\n"
+                self.showLogs = true
+            }
+
+            for await output in self.service.performAction(arguments: ["upgrade"]) {
+                await MainActor.run {
+                    self.operationOutput += output
+                }
+            }
+
+            await MainActor.run {
+                self.lastAutoUpdateTime = Date()
+            }
+
+            await self.refresh()
+        } catch {
+            await MainActor.run {
+                self.error = "Auto-update failed: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    var autoUpdateStatusMessage: String {
+        if !self.autoUpdateEnabled {
+            return "Auto-update is disabled"
+        }
+
+        guard let lastTime = self.lastAutoUpdateTime else {
+            return "Auto-update enabled (waiting for next check)"
+        }
+
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .full
+        let timeString = formatter.localizedString(for: lastTime, relativeTo: Date())
+
+        return "Last auto-update: \(timeString)"
     }
 }

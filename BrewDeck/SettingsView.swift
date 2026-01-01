@@ -22,6 +22,25 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Auto-Update") {
+                Toggle(
+                    "Auto-update packages",
+                    isOn: Binding(
+                        get: { self.viewModel.autoUpdateEnabled },
+                        set: { newValue in
+                            self.viewModel.setAutoUpdateEnabled(newValue)
+                        }))
+                        .accessibilityLabel("Auto-update packages")
+                        .accessibilityHint(
+                            "When enabled, outdated packages will be automatically updated every 24 hours")
+
+                LabeledContent("Status") {
+                    Text(self.viewModel.autoUpdateStatusMessage)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+
             Section("About") {
                 LabeledContent("Version", value: "1.0.0")
                 LabeledContent("App Name", value: "BrewDeck")
